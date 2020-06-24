@@ -36,22 +36,28 @@ test_act = [[1,1,1,5],
 # 1 is right
 # 2 is up
 # 3 is down
-# 5 is No action available
+# None is No action available
 action = [ [0]*len(board[0]) for _ in range(len(board)) ]
 print(action)
 for i in range(len(action)) :
 	for j in range(len(action[i])) :
-		action[i][j] = random.choice([0,1,2,3])
-action[0][3] = 5
-action[1][3] = 5
-action[1][1] = 5
+		if board[i][j] == 0 :
+			action[i][j] = random.choice([0,1,2,3])
+		else :
+			action[i][j] = None
+
 # action = test_act
 
 # -0.02 everywhere except 2 places
 reward = [ [-0.02]*len(board[0]) for _ in range(len(board)) ]
-reward[0][3] = 1
-reward[1][3] = -1
-reward[1][1] = 0
+for i in range(len(reward)):
+	for j in range(len(reward[i])) :
+		if board[i][j] == 4 :
+			reward[i][j] = 1
+		elif board[i][j]== 3 :
+			reward[i][j] = -1
+		else :
+			reward[i][j] = -0.02
 
 	
 #Action - consequence the actual prob distribution which only environment knows
@@ -104,61 +110,13 @@ def weighted_choice(data):
 def flatten(i,j) :
 	return n_tiles_horiz*i + j
 
-def value_iteration():
-		global value_estimate,action
-
-		for i in range(len(value_estimate)) :
-			for j in range(len(value_estimate[i])) :
-				value_estimate[i][j] = 0
-		
-		for i in range(len(value_estimate)):
-			for j in range(len(value_estimate[i])) :
-				if action[i][j] == 5 :
-					pass
-				to_take_max = []
-				for each_act in [0,1,2,3] :
-					possible_actions = action_consequence_estimates[each_act]
-					overall_sum = 0
-					for act in possible_actions :
-						if act == "ntimes" :
-							continue
-						if act == action[i][j] :
-							prob = 0.8
-						else :
-							prob = 0.1
-						# prob = possible_actions[act]/possible_actions["ntimes"]
-						if act == 0 :
-							if  j != 0 and board[i][j-1] != 2:
-								overall_sum += prob*value_estimate[i][j-1]
-							else :
-								overall_sum += prob*value_estimate[i][j]
-						elif act == 1 :
-							if j != len(value_estimate[i]) - 1 and board[i][j+1] != 2: 
-								overall_sum += prob*value_estimate[i][j+1]
-							else :
-								overall_sum += prob*value_estimate[i][j]
-						elif act == 2 :
-							if i != 0  and board[i-1][j] != 2:
-								overall_sum += prob*value_estimate[i-1][j]
-							else :
-								overall_sum += prob*value_estimate[i][j]
-						elif act == 3 :
-							if i != len(value_estimate) - 1  and board[i+1][j] != 2:
-								overall_sum += prob*value_estimate[i+1][j]
-							else :
-								overall_sum += prob*value_estimate[i][j]
-					to_take_max.append(overall_sum)
-				value_estimate[i][j] = reward[i][j] + max(to_take_max)
-				action[i][j] = np.argmax(to_take_max)
-
-
 def policy_iteration_onestep(action,value_estimate) :
 
 	A = np.zeros((n_tiles_horiz*n_tiles_vertical,n_tiles_horiz*n_tiles_vertical), dtype="float32")
 	for i in range(len(value_estimate)) :
 		for j in range(len(value_estimate[i])):
 			A[flatten(i,j),flatten(i,j)] = 1
-			if action[i][j] == 5 :
+			if action[i][j] == None :
 				continue
 			possible_actions = action_consequence_estimates[action[i][j]]
 			for act in possible_actions :
@@ -191,11 +149,13 @@ def policy_iteration_onestep(action,value_estimate) :
 					else :
 						A[flatten(i,j),flatten(i,j)] += -prob*gamma
 	
-	A = np.delete(np.delete(A,flatten(1,1),0), flatten(1,1),1)
+	# A = np.delete(np.delete(A,flatten(1,1),0), flatten(1,1),1)
 	# print(A.shape, A)
-	B = np.delete(np.array(reward).flatten(), flatten(1,1))
+	# B = np.delete(np.array(reward).flatten(), flatten(1,1))
+	B = np.array(reward).flatten()
 	# print(B)
-	X = np.insert(np.linalg.inv(A).dot(B), flatten(1,1),0)
+	# X = np.insert(np.linalg.inv(A).dot(B), flatten(1,1),0)
+	X = np.linalg.inv(A).dot(B)
 	# print(X)
 	for i in range(len(value_estimate)) :
 		for j in range(len(value_estimate[i])):
@@ -205,7 +165,7 @@ def policy_iteration_onestep(action,value_estimate) :
 	print("Old Action : ",action)
 	for i in range(len(action)):
 		for j in range(len(action[i])) :
-			if action[i][j] == 5 :
+			if action[i][j] == None :
 				continue
 			to_take_max = []
 			for each_act in [0,1,2,3] :
@@ -217,11 +177,11 @@ def policy_iteration_onestep(action,value_estimate) :
 				for act in possible_actions :
 					if act == "ntimes" :
 						continue
-					if act == action[i][j] :
-						prob = 0.8
-					else :
-						prob = 0.1
-					# prob = possible_actions[act]/possible_actions["ntimes"]
+					# if act == action[i][j] :
+					# 	prob = 0.8
+					# else :
+					# 	prob = 0.1
+					prob = possible_actions[act]/possible_actions["ntimes"]
 					if act == 0 :
 						if  j != 0 and board[i][j-1] != 2:
 							overall_sum += prob*value_estimate[i][j-1]
@@ -251,11 +211,7 @@ def policy_iteration_onestep(action,value_estimate) :
 	print("New Action List : ",action)
 
 def policy_iteration(action,value_estimate) :
-	prev_val = np.sum(value_estimate)
-	policy_iteration_onestep(action,value_estimate)
 	for i in range(500) :
-		print(prev_val ,np.sum(value_estimate))
-		prev_val = np.sum(value_estimate)
 		policy_iteration_onestep(action,value_estimate)
 
 
@@ -358,23 +314,23 @@ def draw_arrow(canvas,action):
 		for j in range(len(action[i])):
 			curr_pos_horizontal = tile_size*j + padding
 			canvas.draw_text(str(value_estimate[i][j]), (curr_pos_horizontal , curr_pos_vertical + 1*padding ), 10, 'white')
-			if action[i][j] == 2 :
-				point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size],
-							 [curr_pos_horizontal + arrow_size/2,curr_pos_vertical + inner_tile_size - arrow_size],
-							 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size]]
-			elif action[i][j] == 0 :
-				point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size - arrow_size/2],
-							 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size - arrow_size],
-							 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size]]
-			elif action[i][j] == 1 :
-				point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size- arrow_size],
-							 [curr_pos_horizontal,curr_pos_vertical + inner_tile_size ],
-							 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size - arrow_size/2]]
-			elif action[i][j] == 3 :
-				point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size-arrow_size],
-							 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size - arrow_size],
-							 [curr_pos_horizontal + arrow_size/2,curr_pos_vertical + inner_tile_size]]
-			if board[i][j] in (0,1):
+			if action[i][j] != None:
+				if action[i][j] == 2 :
+					point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size],
+								 [curr_pos_horizontal + arrow_size/2,curr_pos_vertical + inner_tile_size - arrow_size],
+								 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size]]
+				elif action[i][j] == 0 :
+					point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size - arrow_size/2],
+								 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size - arrow_size],
+								 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size]]
+				elif action[i][j] == 1 :
+					point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size- arrow_size],
+								 [curr_pos_horizontal,curr_pos_vertical + inner_tile_size ],
+								 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size - arrow_size/2]]
+				elif action[i][j] == 3 :
+					point_list =[[curr_pos_horizontal,curr_pos_vertical + inner_tile_size-arrow_size],
+								 [curr_pos_horizontal + arrow_size,curr_pos_vertical + inner_tile_size - arrow_size],
+								 [curr_pos_horizontal + arrow_size/2,curr_pos_vertical + inner_tile_size]]		
 				canvas.draw_polygon(point_list, 1, "white", "white")
 
 def draw_board(canvas, board) :
@@ -399,7 +355,7 @@ def draw_board(canvas, board) :
 			
 def draw_all(canvas):
 	draw_board(canvas,board)
-	# draw_arrow(canvas,action)
+	draw_arrow(canvas,action)
 	
 
 	
