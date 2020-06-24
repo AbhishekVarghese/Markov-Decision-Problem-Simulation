@@ -14,7 +14,11 @@ import numpy as np
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui 
 
 
-random.seed(11)
+
+seed = 13
+random.seed(seed)
+
+
 #Building the environment
 
 # Board Values
@@ -23,15 +27,25 @@ random.seed(11)
 # 2 is wall
 # 3 is hollow
 # 4 is goal
-board = [[0,0,0,4],
+board1 = [[0,0,0,4],
 		 [0,2,0,3],
 		 [0,0,0,0]]
-start_pos = (2,3)
-player_pos = (2,3)
+start_pos1 = (2,3)
 
-test_act = [[1,1,1,5],
-			[3,5,1,5],
-			[1,1,2,2]]
+board2= [[0,0,4,0,0],
+		 [2,0,2,0,3],
+		 [0,0,0,3,0],
+		 [0,2,0,0,0]]
+start_pos2 = (3,4)
+
+
+
+board = board1
+start_pos = start_pos1
+
+player_pos = start_pos
+
+
 # 0 is left
 # 1 is right
 # 2 is up
@@ -48,7 +62,7 @@ for i in range(len(action)) :
 
 # action = test_act
 
-# -0.02 everywhere except 2 places
+# +1 for goal, -1 for danger and -0.02 everywhere
 reward = [ [-0.02]*len(board[0]) for _ in range(len(board)) ]
 for i in range(len(reward)):
 	for j in range(len(reward[i])) :
@@ -68,9 +82,12 @@ action_consequence[2] = [(0,0.1),(2,0.8),(1,0.1)]
 action_consequence[3] = [(1,0.1),(3,0.8),(0,0.1)]
 
 #Miscallanepous
-tile_size = 100
+canvas_width = 700
+canvas_height = 500
 n_tiles_horiz = len(board[0])
 n_tiles_vertical = len(board)
+tile_size = canvas_height/n_tiles_vertical
+
 tile_dims = (tile_size,tile_size)
 arrow_size = tile_size/6
 num_moves = 0
@@ -211,13 +228,14 @@ def policy_iteration_onestep(action,value_estimate) :
 	print("New Action List : ",action)
 
 def policy_iteration(action,value_estimate) :
-	for i in range(500) :
+	for i in range(100) :
 		policy_iteration_onestep(action,value_estimate)
 
 
 def agent_move() :
-	global board,player_pos,action_consequence_estimates
-	
+	global board,player_pos,action_consequence_estimates,action
+
+	print(len(action), len(action[1]))	
 	sampled_action = weighted_choice(action_consequence[action[player_pos[0]][player_pos[1]]])
 	# Agent Updating what has happened in his mind
 	action_consequence_estimates[action[player_pos[0]][player_pos[1]]][sampled_action] += 1
@@ -256,11 +274,76 @@ def agent_move() :
 # -------------------------------------------------------------------------------------
 
 # Handler for mouse click
-def click():
-	pass
+def set_board1() :
+	global board,start_pos
+
+	board = board1 
+	start_pos = start_pos1
+	reset()
+
+def set_board2() :
+	global board,start_pos
+
+	board = board2 
+	start_pos = start_pos2
+	reset()
+
+def reset():
+	global player_pos,action_consequence_estimates,value_estimate, seed,reward, board,action,n_tiles_horiz,n_tiles_vertical,tile_size,arrow_size,label1,label2,label3
+
+
+	player_pos = start_pos
+	seed += 1
+	random.seed(seed)
+	#Reser action consequence estimates
+	action_consequence_estimates = dict()
+	action_consequence_estimates[0] = {"ntimes": 3, 3 : 1,0 : 1,2 : 1}
+	action_consequence_estimates[1] = {"ntimes": 3, 2 : 1,1 : 1,3 : 1}
+	action_consequence_estimates[2] = {"ntimes": 3, 0 : 1,2 : 1,1 : 1}
+	action_consequence_estimates[3] = {"ntimes": 3, 1 : 1,3 : 1,0 : 1}
+	label1.set_text('P_left_goes-left = %.3f'%(action_consequence_estimates[0][0]/action_consequence_estimates[0]["ntimes"]))
+	label2.set_text('P_left_goes-up = %.3f'%(action_consequence_estimates[0][2]/action_consequence_estimates[0]["ntimes"]))
+	label3.set_text('P_left_goes-down = %.3f'%(action_consequence_estimates[0][3]/action_consequence_estimates[0]["ntimes"]))
+
+
+	#reset value_estimates
+	value_estimate = [ [0]*len(board[0]) for _ in range(len(board)) ]
+	value_estimate = np.array(value_estimate, dtype="float32")
+
+	#reset action to random
+	action = [ [0]*len(board[0]) for _ in range(len(board)) ]
+	for i in range(len(action)) :
+		for j in range(len(action[i])) :
+			if board[i][j] == 0 :
+				action[i][j] = random.choice([0,1,2,3])
+			else :
+				action[i][j] = None
+
+	#Stop all timers
+	timer_play.stop()
+	timer_singlerun.stop()
+
+	#reset reward
+	reward = [ [-0.02]*len(board[0]) for _ in range(len(board)) ]
+	for i in range(len(reward)):
+		for j in range(len(reward[i])) :
+			if board[i][j] == 4 :
+				reward[i][j] = 1
+			elif board[i][j]== 3 :
+				reward[i][j] = -1
+			else :
+				reward[i][j] = -0.02
+
+	n_tiles_horiz = len(board[0])
+	n_tiles_vertical = len(board)
+	tile_size = canvas_height/n_tiles_vertical
+
+	tile_dims = (tile_size,tile_size)
+	arrow_size = tile_size/6
+
 
 def one_step():
-	global player_pos, num_moves, type_move
+	global player_pos, num_moves, type_move, label1,label2,label3
 
 	num_moves += 1
 	if type_move == "player" :
@@ -275,6 +358,9 @@ def one_step():
 			timer_singlerun.stop()
 			category = "singlerun"
 		timer_singlerun.stop()
+		label1.set_text('P_left_goes-left = %.3f'%(action_consequence_estimates[0][0]/action_consequence_estimates[0]["ntimes"]))
+		label2.set_text('P_left_goes-up = %.3f'%(action_consequence_estimates[0][2]/action_consequence_estimates[0]["ntimes"]))
+		label3.set_text('P_left_goes-down = %.3f'%(action_consequence_estimates[0][3]/action_consequence_estimates[0]["ntimes"]))
 		policy_iteration(action, value_estimate)
 		type_move = "blank"
 		if category=="play" :
@@ -365,13 +451,27 @@ def draw_all(canvas):
 # print(value_estimate)
 # quit()
 
-frame = simplegui.create_frame("Home", tile_size*n_tiles_horiz, tile_size*n_tiles_vertical)
+frame = simplegui.create_frame("Home", canvas_width, canvas_height,400)
 frame.add_button("1 Step", one_step)
 frame.add_button("Single Run", single_run)
 frame.add_button("Play", play)
 frame.add_button("Stop", stop)
-frame.add_button("Reset", click)
+frame.add_button("Reset", reset)
 frame.set_draw_handler(draw_all)
+
+print(action_consequence_estimates)
+frame.add_label("\n\n\n")
+frame.add_label("\n\n\n")
+frame.add_label("\n\nProbability Distribution known by the agent for action left : \n\n")
+frame.add_label("\n\n\n")
+label1 = frame.add_label('P_left_goes-left = %.3f'%(action_consequence_estimates[0][0]/action_consequence_estimates[0]["ntimes"]))
+label2 = frame.add_label('P_left_goes-up = %.3f'%(action_consequence_estimates[0][2]/action_consequence_estimates[0]["ntimes"]))
+label3 =  frame.add_label('P_left_goes-down = %.3f'%(action_consequence_estimates[0][3]/action_consequence_estimates[0]["ntimes"]))
+frame.add_label("\n\n\n")
+frame.add_label("\n\n\n")
+frame.add_button("Board1", set_board1)
+frame.add_button("Board2", set_board2)
+
 
 timer_play = simplegui.create_timer(500, one_step)
 timer_singlerun = simplegui.create_timer(500, one_step)
