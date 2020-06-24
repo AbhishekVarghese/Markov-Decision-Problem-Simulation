@@ -289,7 +289,7 @@ def set_board2() :
 	reset()
 
 def reset():
-	global player_pos,action_consequence_estimates,value_estimate, seed,reward, board,action,n_tiles_horiz,n_tiles_vertical,tile_size,arrow_size,label1,label2,label3
+	global player_pos,action_consequence_estimates,value_estimate, seed,reward, board,action,n_tiles_horiz,n_tiles_vertical,tile_size,arrow_size,label1,label2,label3,type_move
 
 
 	player_pos = start_pos
@@ -340,7 +340,7 @@ def reset():
 
 	tile_dims = (tile_size,tile_size)
 	arrow_size = tile_size/6
-
+	type_move = "player"
 
 def one_step():
 	global player_pos, num_moves, type_move, label1,label2,label3
