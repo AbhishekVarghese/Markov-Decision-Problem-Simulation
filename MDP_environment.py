@@ -92,9 +92,6 @@ def right():
         
 def up():
     global player_pos
-    if player_pos[1] == 2 and player_pos[0] == 1 :
-        player_pos[1] += 1
-        return
     
     if player_pos[0] != 0 :
         player_pos[0] -= 1
