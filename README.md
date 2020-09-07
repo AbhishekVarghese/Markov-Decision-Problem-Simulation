@@ -2,16 +2,27 @@
 
 This is a simulation of the standard textbook MDP environment(Robot in a maze) made using SimpleGUI and python.
 
-## Environment is defined as follows :
+To install SimpleGUI 
 
-Goal - Get to the green square without touching the red square within certain number of moves.
-Actions - Up, Down, Left or Right 
+    pip install SimpleGUICS2Pygame
+    
 
-Randomness : When an agent takes an action it goes in the correct direction with probability 0.8, or with a probability of 0.1 it can steer either to the left or to the right.
+### Environment - Robot in a 2D maze :
+
+**Goal** - Get to the green square without touching the red square within certain number of moves. If you hit a wall(grey square) you will bounce back to the same square.
+
+**Actions** - Up, Down, Left or Right 
+
+**Randomness** - When an agent takes an action it goes in the correct direction with probability 0.8, or with a probability of 0.1 it can steer either to the left or to the right.
 
 The V value and the best action on each square is available.
 
+The boards can be edited within the code to add new or bigger boards. Further instructions are given within the code.
+
+
+### Files
 
 There are 2 files.
-MDP.py is the simulation
-MDP_environment is to understand the basic environment without the randomness.
+
+1. MDP.py is the simulation
+1. MDP_environment is to understand the basic environment without the randomness.
