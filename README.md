@@ -15,7 +15,10 @@ To install SimpleGUI
 
 **Actions** - Up, Down, Left or Right 
 
-**Rewards** - +1 on reaching the goal, -1 on hitting red square, 0 on all others
+**Rewards** - 
+* +1 on reaching the goal 
+* -1 on hitting red square
+* 0 on all others
 
 **Randomness** - When an agent takes an action it goes in the correct direction with probability 0.8, or with a probability of 0.1 it can steer either to the left or to the right.
 
