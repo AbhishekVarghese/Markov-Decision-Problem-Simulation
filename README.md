@@ -11,7 +11,11 @@ To install SimpleGUI
 
 **Goal** - Get to the green square without touching the red square within certain number of moves. If you hit a wall(grey square) you will bounce back to the same square.
 
+**States** - Squares on the grid with cordinates (x,y)
+
 **Actions** - Up, Down, Left or Right 
+
+**Rewards** - +1 on reaching the goal, -1 on hitting red square, 0 on all others
 
 **Randomness** - When an agent takes an action it goes in the correct direction with probability 0.8, or with a probability of 0.1 it can steer either to the left or to the right.
 
