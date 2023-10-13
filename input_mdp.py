@@ -10,6 +10,7 @@ class MDPGUI:
         self.board = np.zeros((8, 4))
         self.player_pos = (2, 0)
         m, n = self.board.shape
+        self.transition_prob = 0.8
 
         # Board visualisation constants
         self.cmap = {
@@ -57,6 +58,10 @@ class MDPGUI:
         self.frame.add_button("Set Start Position", self.set_start_pos, width = 200)
 
 
+        self.frame.add_label("\n"*10)
+        self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
+        self.prob.set_text(str(self.transition_prob))
+
         self.frame.set_mouseclick_handler(self.mouse_handler)
         self.frame.set_mousedrag_handler(self.mouse_handler)
         # # # print(self.frame.__attr__)
@@ -73,10 +78,14 @@ class MDPGUI:
             self.w_label._input_pos = 0
             self.h_label._input_pos = 0
             self.c_reward._input_pos = 0
+            self.prob._input_pos = 0
             self.start()
 
     def set_start_pos(self):
         self.draw_mode = "start_pos"
+
+    def set_prob(self, p):
+        self.transition_prob = p
 
     def draw_mode_handler(self, mode):
         def handler():
