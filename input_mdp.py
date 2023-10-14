@@ -45,7 +45,7 @@ class MDPGUI:
             self.call_on_begin = self.stop
         self.frame = frame
 
-        self.board = np.zeros((8, 4))
+        self.board = np.zeros((4, 4))
         self.player_pos = (2, 0)
         m, n = self.board.shape
         self.transition_prob = 0.8
@@ -71,14 +71,14 @@ class MDPGUI:
         
         self.frame.add_label("\n"*10)
 
-        self.w_label = self.frame.add_input("Grid Width (Type or adjust)", self.board_input_handler(0), width=100)
+        self.w_label = self.frame.add_input("Grid Width (Type or adjust)", self.board_input_handler(1), width=100)
         self.w_label.set_text(str(m))
-        self.frame.add_button("+", self.board_button_handler(ax=0, delta=1), width = 100)
-        self.frame.add_button("--", self.board_button_handler(ax=0, delta=-1), width = 100)
-        self.h_label = self.frame.add_input("Grid Height (Type or adjust)", self.board_input_handler(1), width=100)
-        self.h_label.set_text(str(n))
         self.frame.add_button("+", self.board_button_handler(ax=1, delta=1), width = 100)
         self.frame.add_button("--", self.board_button_handler(ax=1, delta=-1), width = 100)
+        self.h_label = self.frame.add_input("Grid Height (Type or adjust)", self.board_input_handler(0), width=100)
+        self.h_label.set_text(str(n))
+        self.frame.add_button("+", self.board_button_handler(ax=0, delta=1), width = 100)
+        self.frame.add_button("--", self.board_button_handler(ax=0, delta=-1), width = 100)
         self.frame.set_draw_handler(self.draw_board)
 
 
@@ -110,6 +110,8 @@ class MDPGUI:
         # # print(self.frame.add_input.__doc__)
         # print(dir(self.w_label))
         # print(dir(self.frame))
+
+        self.x_pad, self.y_pad, self.l = self.get_pad_l()
 
     def release_control(self) :
         self.frame._controls = []
@@ -191,30 +193,28 @@ class MDPGUI:
             self.player_pos = (0, 0)
         self.board = new_board
 
+        self.x_pad, self.y_pad, self.l = self.get_pad_l()
+
     def get_pad_l(self):
         m, n = self.board.shape
-        w, h = self.canvas_width//m, self.canvas_height//n
+        w, h = self.canvas_width//n, self.canvas_height//m
         l = min(w, h)
         if w>h:
-            x_pad = (self.canvas_width - m*l)//2
+            x_pad = (self.canvas_width - n*l)//2
             y_pad = 0
         else:
             x_pad = 0
-            y_pad = (self.canvas_height - n*l)//2
+            y_pad = (self.canvas_height - m*l)//2
         return x_pad, y_pad, l
 
     def ij2xy(self, i, j):
-        x_pad, y_pad, l = self.get_pad_l()
-
-        x = x_pad + i*l 
-        y = y_pad + j*l
+        x = self.x_pad + j*self.l 
+        y = self.y_pad + i*self.l
         return x, y
 
     def xy2ij(self, x, y, round=True):
-        x_pad, y_pad, l = self.get_pad_l()
-
-        i = (x-x_pad)/l
-        j = (y-y_pad)/l
+        j = (x-self.x_pad)/self.l
+        i = (y-self.y_pad)/self.l
         if round:
             i = math.floor(i)
             j = math.floor(j)
