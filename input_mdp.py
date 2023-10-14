@@ -1,6 +1,7 @@
 import random, time
 import numpy as np
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui 
+import math
 
 
 class MDPGUI:
@@ -9,6 +10,7 @@ class MDPGUI:
         self.board = np.zeros((8, 4))
         self.player_pos = (2, 0)
         m, n = self.board.shape
+        self.transition_prob = 0.8
 
         # Board visualisation constants
         self.cmap = {
@@ -52,8 +54,16 @@ class MDPGUI:
         self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
         self.frame.add_button("Erase Reward", self.draw_mode_handler(0), width = 200)
 
-        self.frame.set_mouseclick_handler(self.update_rewards)
-        self.frame.set_mousedrag_handler(self.update_rewards)
+        self.frame.add_label("\n"*10)
+        self.frame.add_button("Set Start Position", self.set_start_pos, width = 200)
+
+
+        self.frame.add_label("\n"*10)
+        self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
+        self.prob.set_text(str(self.transition_prob))
+
+        self.frame.set_mouseclick_handler(self.mouse_handler)
+        self.frame.set_mousedrag_handler(self.mouse_handler)
         # # # print(self.frame.__attr__)
         # all_fns = dir(self.frame)
         # fns = [f for f in all_fns if "set" in f]
@@ -68,7 +78,14 @@ class MDPGUI:
             self.w_label._input_pos = 0
             self.h_label._input_pos = 0
             self.c_reward._input_pos = 0
+            self.prob._input_pos = 0
             self.start()
+
+    def set_start_pos(self):
+        self.draw_mode = "start_pos"
+
+    def set_prob(self, p):
+        self.transition_prob = p
 
     def draw_mode_handler(self, mode):
         def handler():
@@ -78,12 +95,15 @@ class MDPGUI:
     def custom_draw_mode(self, mode):
         self.draw_mode = int(mode)
     
-    def update_rewards(self, pos):
+    def mouse_handler(self, pos):
         x, y = pos
         i, j = self.xy2ij(x, y)
-        if i >= self.board.shape[0] or j >= self.board.shape[1]:
+        if i >= self.board.shape[0] or j >= self.board.shape[1] or i < 0 or j < 0:
             return
-        self.board[i, j] = self.draw_mode
+        if self.draw_mode == "start_pos":
+            self.player_pos = (i, j)
+        else:
+            self.board[i, j] = self.draw_mode
 
     def board_button_handler(self, ax, delta):
         def handler():
@@ -117,6 +137,9 @@ class MDPGUI:
         for i in range(min(cur_m, m)):
             for j in range(min(cur_n, n)):
                 new_board[i, j] = self.board[i, j]
+        i, j = self.player_pos
+        if i >= m or j >= n or i < 0 or j < 0:
+            self.player_pos = (0, 0)
         self.board = new_board
 
     def get_pad_l(self):
@@ -144,8 +167,8 @@ class MDPGUI:
         i = (x-x_pad)/l
         j = (y-y_pad)/l
         if round:
-            i = int(i)
-            j = int(j)
+            i = math.floor(i)
+            j = math.floor(j)
         return i, j
 
 
