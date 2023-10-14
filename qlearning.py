@@ -3,9 +3,8 @@ import random
 import itertools
 import warnings
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
-
-# from input_mdp import MDPGUI,Board
-
+from input_mdp import MDPGUI,Board
+import math
 
 class Agent :
     def __init__(self, state_space_shape, gamma = 0.9,  alpha = 0.01) :
@@ -19,6 +18,10 @@ class Agent :
     def reset_agent(self) :
         self.estQ = np.random.random(size = self.state_space_shape + (4,) ) # The last indice stores action
 
+    @property
+    def board(self) :
+        return self.estQ
+    
     def select_action( self, state, available_actions, epsilon = 1) :
         toss = random.uniform(0,1)
         qvalues = []
@@ -43,16 +46,17 @@ class Agent :
 
 class Mdp_env :
     def __init__(self, board, start_pos = None) :
-        self.board_length = board.length
+        self.board_height = board.height
         self.board_width = board.width
         self.reward_dict = board.reward_dict
         self.reward_tiles = board.reward_dict.keys()
         self.blocked_tiles = board.blocked_tiles
         self.done_tiles = board.done_tiles
+        self.board = board.board
         if start_pos :
             self.curr_pos = start_pos
         else :
-            all_tiles = set(itertools.product(range(self.board_length, self.board_width)))
+            all_tiles = set(itertools.product(range(self.board_height, self.board_width)))
             available_tiles = (all_tiles - set(self.reward_tiles)) - set(self.blocked_tiles)
             self.curr_pos = np.random.choice(available_tiles)
     
@@ -67,7 +71,7 @@ class Mdp_env :
                 warnings.warn(f"You can't go left from this position {self.curr_pos}")
         elif action == 'right' :
             new_pos = (self.curr_pos[0] + 1, self.curr_pos[1])
-            if self.curr_pos[0] < self.board_length and not new_pos in self.blocked_tiles :
+            if self.curr_pos[0] < self.board_height and not new_pos in self.blocked_tiles :
                 self.curr_pos = new_pos
             else :
                 warnings.warn(f"You can't go right from this position {self.curr_pos}")
@@ -94,7 +98,7 @@ class Mdp_env :
         legal_actions = []
         if self.curr_pos[0] >= 0 and not (self.curr_pos[0] - 1, self.curr_pos[1]) in self.blocked_tiles :
             legal_actions.append('left')
-        if self.curr_pos[0] < self.board_length and not (self.curr_pos[0] + 1, self.curr_pos[1]) in self.blocked_tiles :
+        if self.curr_pos[0] < self.board_height and not (self.curr_pos[0] + 1, self.curr_pos[1]) in self.blocked_tiles :
             legal_actions.append('right')
         if self.curr_pos[0] >= 0 and not (self.curr_pos[0], self.curr_pos[1] - 1) in self.blocked_tiles :
             legal_actions.append('up')
@@ -105,17 +109,18 @@ class Mdp_env :
 
 
 class Qlearning_with_GUI() :
-    def __init__(self, board, start_pos, window_width = 700, window_height=500, epsilon = 0.25) :
-        self.env = Mdp_env(board,start_pos=start_pos)
-        self.agent = Agent((self.env.board_length, self.env.board_width))
-        self.start_pos = start_pos
+    def __init__(self, frame, epsilon = 0.25) :
+        self.frame = frame
         self.epsilon = epsilon
-        self.setup_frame( window_width, window_height)
-        # Start the frame animation
-        self.frame.start()
-
-    def setup_frame(self,window_width, window_height) :
-
+        
+    def take_over(self, board, start_pos) :
+        board = Board(board)
+        self.env = Mdp_env(board,start_pos=start_pos)
+        self.agent = Agent((self.env.board_height, self.env.board_width))
+        self.start_pos = start_pos
+        self.setup_frame()
+        
+    def setup_frame(self) :
         # Board visualisation constants
         self.cmap = {
             0: "black",
@@ -128,20 +133,27 @@ class Qlearning_with_GUI() :
         self.grid_width = 2
         self.draw_mode = 0
 
-        frame = simplegui.create_frame("Qlearning", window_width, window_height) # There was one more argument, not sure what that is
+        # UI parameter imports
+        self.canvas_width = self.frame._canvas._width
+        self.canvas_height = self.frame._canvas._height
+        # Adding GUI elements
         frame.add_button("reset", self.reset)
-        frame.add_button("Run", self.run)
-        frame.add_button("Stop", self.stop)
+        frame.add_button("Run Sim", self.run_sim)
+        frame.add_button("Stop Sim", self.stop_sim)
         frame.add_button("Reset", self.reset)
         frame.set_draw_handler(self.draw_board)
-
-        self.frame = frame
-        self.timer_play = simplegui.create_timer(500, self.single_step)
+        self.timer_play = simplegui.create_timer(1000, self.single_step)
 
 
-        
+    def run_sim(self) :
+        self.timer_play.start()
+    def stop_sim(self) :
+        self.timer_play.stop()
+
     def draw_board(self, canvas):
-        m, n = self.agent.board.shape
+        Qest = self.agent.estQ
+        Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
+        m, n = Vest.shape
         for i in range(m):
             for j in range(n):
                 rect = [
@@ -150,7 +162,7 @@ class Qlearning_with_GUI() :
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
-                color = self.cmap.get(self.board[i, j], self.cmap["other"])
+                color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 canvas.draw_polygon(
                     rect, self.grid_width, 
                     self.grid_color, 
@@ -158,7 +170,7 @@ class Qlearning_with_GUI() :
                 )
                 if color == self.cmap["other"]:
                     canvas.draw_text(
-                        str(int(self.board[i, j])),
+                        str(int(self.env.board[i, j])),
                         self.ij2xy(i+0.5, j+0.5),
                         font_size=20,
                         font_color="black"
@@ -170,6 +182,36 @@ class Qlearning_with_GUI() :
             cell_size//4, 2, 
             "yellow", "yellow"
         )
+
+    def get_pad_l(self):
+        m, n = self.env.board_width, self.env.board_height
+        w, h = self.canvas_width//m, self.canvas_height//n
+        l = min(w, h)
+        if w>h:
+            x_pad = (self.canvas_width - m*l)//2
+            y_pad = 0
+        else:
+            x_pad = 0
+            y_pad = (self.canvas_height - n*l)//2
+        return x_pad, y_pad, l
+
+    def ij2xy(self, i, j):
+        x_pad, y_pad, l = self.get_pad_l()
+
+        x = x_pad + i*l 
+        y = y_pad + j*l
+        return x, y
+
+    def xy2ij(self, x, y, round=True):
+        x_pad, y_pad, l = self.get_pad_l()
+
+        i = (x-x_pad)/l
+        j = (y-y_pad)/l
+        if round:
+            i = math.floor(i)
+            j = math.floor(j)
+        return i, j
+    
 
     def reset(self) :
         self.agent.reset_agent()
@@ -189,8 +231,7 @@ class Qlearning_with_GUI() :
             self.env.reset()
 
 if __name__ == "__main__" :
-    inputgui = MDPGUI()
-    board = Board(inputgui.board)
-    del inputgui
-    start_pos = (0,0)
-    Qlearning_with_GUI(board,start_pos)
+    frame = simplegui.create_frame("Qlearning", 700,500) # There was one more argument, not sure what that is
+    qlearning_gui = Qlearning_with_GUI(frame)
+    inputgui = MDPGUI(frame, send_board_data_to = qlearning_gui.take_over)
+    frame.start()

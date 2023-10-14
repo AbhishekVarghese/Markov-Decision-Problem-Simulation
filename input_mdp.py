@@ -2,12 +2,49 @@ import random, time
 import numpy as np
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui 
 import math
-from qlearning import Qlearning_with_GUI
+
+
+
+class DefaultDict(dict):
+    def __init__(self, default_factory, **kwargs):
+        super().__init__(**kwargs)
+
+        self.default_factory = default_factory
+
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            return self.default_factory()
+
+class Board:
+    def __init__(self, board):
+        self.board = board
+        self.height = board.shape[0]
+        self.width = board.shape[1]
+        self.reward_dict = DefaultDict(lambda : 0)
+        self.done_tiles = []
+        self.blocked_tiles = []
+        for i in range(self.height) :
+            for j in range(self.width) :
+                if not board[i][j] in (0,-10):
+                    self.reward_dict[(i,j)] = board[i][j]
+                    self.done_tiles.append((i,j))
+                elif board[i][j] == -10 :
+                    self.blocked_tiles.append((i,j))
+
 
 
 class MDPGUI:
-    def __init__(self):
+    def __init__(self, frame, send_board_data_to = None):
         # first index is along width and second is along height
+
+        if send_board_data_to :
+            self.send_board_data_to = send_board_data_to
+        else :
+            self.call_on_begin = self.stop
+        self.frame = frame
+
         self.board = np.zeros((8, 4))
         self.player_pos = (2, 0)
         m, n = self.board.shape
@@ -25,11 +62,9 @@ class MDPGUI:
         self.grid_width = 2
         self.draw_mode = 0
         
-        # UI initialisations
-        self.canvas_width = 700
-        self.canvas_height = 500
-
-        self.frame = simplegui.create_frame("MDP Visualization", self.canvas_width, self.canvas_height)
+        # UI parameter imports
+        self.canvas_width = self.frame._canvas._width
+        self.canvas_height = self.frame._canvas._height
 
         self.frame.add_label("Set Input Configurations")
         # self.frame.add_label("(Note: You need to press enter after every text input)")
@@ -64,7 +99,7 @@ class MDPGUI:
         self.prob.set_text(str(self.transition_prob))
 
         self.frame.add_label("\n"*10)
-        self.frame.add_button("Begin", self.goto_algo, width = 200)
+        self.frame.add_button("Begin", self.release_control, width = 200)
 
         self.frame.set_mouseclick_handler(self.mouse_handler)
         self.frame.set_mousedrag_handler(self.mouse_handler)
@@ -75,6 +110,11 @@ class MDPGUI:
         # # print(self.frame.add_input.__doc__)
         # print(dir(self.w_label))
         # print(dir(self.frame))
+
+    def release_control(self) :
+        self.frame._controls = []
+        self.frame._draw_controlpanel()
+        self.send_board_data_to(self.board, self.player_pos)
 
     def start(self):
         try:
@@ -87,11 +127,9 @@ class MDPGUI:
             self.prob._input_pos = 0
             self.start()
 
-    def goto_algo(self):
-        self.frame._controls = []
-        self.frame._draw_controlpanel()
-        self.q_learn()
-
+    def stop(self,*args) :
+        self.frame.stop()
+    
     def set_start_pos(self):
         self.draw_mode = "start_pos"
 
@@ -214,13 +252,10 @@ class MDPGUI:
             "yellow", "yellow"
         )
 
-    def q_learn(self, *args):
-        self.qlearn = Qlearning_with_GUI(self.board, self.player_pos)
-        self.frame.add_button("reset", self.qlearn.reset)
-        self.frame.add_button("Run", self.qlearn.run)
-        self.frame.add_button("Stop", self.qlearn.stop)
-        self.frame.add_button("Reset", self.qlearn.reset)
 
 if __name__ == "__main__" :
-    mdp = MDPGUI()
+    canvas_width = 700
+    canvas_height = 500
+    frame = simplegui.create_frame("MDP Visualization", canvas_width, canvas_height)
+    mdp = MDPGUI(frame)
     mdp.start()
