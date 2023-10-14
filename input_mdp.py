@@ -2,6 +2,7 @@ import random, time
 import numpy as np
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui 
 import math
+from qlearning import Qlearning_with_GUI
 
 
 class MDPGUI:
@@ -31,7 +32,7 @@ class MDPGUI:
         self.frame = simplegui.create_frame("MDP Visualization", self.canvas_width, self.canvas_height)
 
         self.frame.add_label("Set Input Configurations")
-        self.frame.add_label("(Note: You need to press enter after every text input)")
+        # self.frame.add_label("(Note: You need to press enter after every text input)")
         
         self.frame.add_label("\n"*10)
 
@@ -62,6 +63,9 @@ class MDPGUI:
         self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
         self.prob.set_text(str(self.transition_prob))
 
+        self.frame.add_label("\n"*10)
+        self.frame.add_button("Begin", self.goto_algo, width = 200)
+
         self.frame.set_mouseclick_handler(self.mouse_handler)
         self.frame.set_mousedrag_handler(self.mouse_handler)
         # # # print(self.frame.__attr__)
@@ -69,6 +73,8 @@ class MDPGUI:
         # fns = [f for f in all_fns if "set" in f]
         # print(fns)
         # # print(self.frame.add_input.__doc__)
+        # print(dir(self.w_label))
+        # print(dir(self.frame))
 
     def start(self):
         try:
@@ -80,6 +86,11 @@ class MDPGUI:
             self.c_reward._input_pos = 0
             self.prob._input_pos = 0
             self.start()
+
+    def goto_algo(self):
+        self.frame._controls = []
+        self.frame._draw_controlpanel()
+        self.q_learn()
 
     def set_start_pos(self):
         self.draw_mode = "start_pos"
@@ -203,5 +214,13 @@ class MDPGUI:
             "yellow", "yellow"
         )
 
-mdp = MDPGUI()
-mdp.start()
+    def q_learn(self, *args):
+        self.qlearn = Qlearning_with_GUI(self.board, self.player_pos)
+        self.frame.add_button("reset", self.qlearn.reset)
+        self.frame.add_button("Run", self.qlearn.run)
+        self.frame.add_button("Stop", self.qlearn.stop)
+        self.frame.add_button("Reset", self.qlearn.reset)
+
+if __name__ == "__main__" :
+    mdp = MDPGUI()
+    mdp.start()

@@ -4,7 +4,7 @@ import itertools
 import warnings
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 
-from input_mdp import MDPGUI,Board
+# from input_mdp import MDPGUI,Board
 
 
 class Agent :
