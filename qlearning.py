@@ -5,18 +5,20 @@ import warnings
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 from input_mdp import MDPGUI,Board
 import math
+import time
 
 class Agent :
-    def __init__(self, state_space_shape, gamma = 0.9,  alpha = 0.01) :
+    def __init__(self, state_space_shape, gamma = 0.9,  alpha = 0.1) :
         self.alpha = alpha #learning rate
         self.gamma = gamma
         self.state_space_shape = state_space_shape
-        self.reset_agent()
+        print(state_space_shape)
         self.action_to_index = {'left' : 0, 'right' : 1, 'up' : 2, 'down' :3}
         self.reset_agent()
 
     def reset_agent(self) :
-        self.estQ = np.random.random(size = self.state_space_shape + (4,) ) # The last indice stores action
+        # self.estQ = np.random.random(size = self.state_space_shape + (4,) ) - 0.5 # The last indice stores action
+        self.estQ = np.zeros(shape = self.state_space_shape + (4,)  )
 
     @property
     def board(self) :
@@ -38,9 +40,9 @@ class Agent :
 
     def update_state(self, state, action, new_state, reward) :
         # Q = (1 - alpha)*Q(st,at) + alpha(rt + gamma * max_a Q(st+1, a))
-
-        Qlhs = (1 - self.alpha)* self.state_space[ *state,action]
-        Qrhs = self.alpha( reward + self.gamma * np.max(self.estQ[ *new_state, : ]))
+        action = self.action_to_index[action]
+        Qlhs = (1 - self.alpha)* self.estQ[ *state,action]
+        Qrhs = self.alpha * ( reward + self.gamma * np.max(self.estQ[ *new_state, : ]))
         self.estQ[*state,action] = Qlhs + Qrhs
     
 
@@ -53,63 +55,89 @@ class Mdp_env :
         self.blocked_tiles = board.blocked_tiles
         self.done_tiles = board.done_tiles
         self.board = board.board
+        self.start_pos = start_pos
         if start_pos :
             self.curr_pos = start_pos
         else :
             all_tiles = set(itertools.product(range(self.board_height, self.board_width)))
             available_tiles = (all_tiles - set(self.reward_tiles)) - set(self.blocked_tiles)
             self.curr_pos = np.random.choice(available_tiles)
+        self.visited_tiles = [self.curr_pos]
     
+    def reset(self) :
+        if self.start_pos :
+            self.curr_pos = self.start_pos
+        else :
+            all_tiles = set(itertools.product(range(self.board_height, self.board_width)))
+            available_tiles = (all_tiles - set(self.reward_tiles)) - set(self.blocked_tiles)
+            self.curr_pos = np.random.choice(available_tiles)
+        self.visited_tiles = [self.curr_pos]
+        
 
     def step(self, action) :
+        done = False
         # This piece of code, although repetative, would save memory and speed for huge board dimensions
         if action == 'left' :
-            new_pos = (self.curr_pos[0] - 1, self.curr_pos[1])
-            if self.curr_pos[0] >= 0 and not new_pos in self.blocked_tiles :
+            new_pos = (self.curr_pos[0], self.curr_pos[1] - 1)
+            if self.curr_pos[1] >= 0 and not new_pos in self.blocked_tiles :
                 self.curr_pos = new_pos
             else :
                 warnings.warn(f"You can't go left from this position {self.curr_pos}")
         elif action == 'right' :
-            new_pos = (self.curr_pos[0] + 1, self.curr_pos[1])
-            if self.curr_pos[0] < self.board_height and not new_pos in self.blocked_tiles :
+            new_pos = (self.curr_pos[0], self.curr_pos[1] + 1)
+            if self.curr_pos[1] < self.board_width and not new_pos in self.blocked_tiles :
                 self.curr_pos = new_pos
             else :
                 warnings.warn(f"You can't go right from this position {self.curr_pos}")
         elif action == 'up' :
-            new_pos = (self.curr_pos[0], self.curr_pos[1] - 1)
+            new_pos = (self.curr_pos[0] - 1, self.curr_pos[1])
             if self.curr_pos[0] >= 0 and not new_pos in self.blocked_tiles :
                 self.curr_pos = new_pos
             else :
                 warnings.warn(f"You can't go up from this position {self.curr_pos}")
         elif action == 'down' :
-            new_pos = (self.curr_pos[0], self.curr_pos[1] + 1)
-            if self.curr_pos[0] < self.board_width and not new_pos in self.blocked_tiles :
+            new_pos = (self.curr_pos[0] + 1 , self.curr_pos[1])
+            if self.curr_pos[0] < self.board_height and not new_pos in self.blocked_tiles :
                 self.curr_pos = new_pos
             else :
                 warnings.warn(f"You can't go down from this position {self.curr_pos}")
         
+        print("Took action ", action, self.curr_pos)
         reward  = self.reward_dict[self.curr_pos]
+        print(self.done_tiles)
         if self.curr_pos in self.done_tiles :
             done = True
+        self.visited_tiles.append(self.curr_pos)
 
         return self.curr_pos, reward, done
 
     def get_legal_actions(self) :
         legal_actions = []
-        if self.curr_pos[0] >= 0 and not (self.curr_pos[0] - 1, self.curr_pos[1]) in self.blocked_tiles :
+        preferred_actions = []
+        if self.curr_pos[1] >= 1 and not (self.curr_pos[0], self.curr_pos[1] - 1) in self.blocked_tiles :
             legal_actions.append('left')
-        if self.curr_pos[0] < self.board_height and not (self.curr_pos[0] + 1, self.curr_pos[1]) in self.blocked_tiles :
+            if not (self.curr_pos[0], self.curr_pos[1] - 1) in self.visited_tiles :
+                preferred_actions.append('left')
+        if self.curr_pos[1] < self.board_width - 1 and not (self.curr_pos[0] , self.curr_pos[1] + 1) in self.blocked_tiles :
             legal_actions.append('right')
-        if self.curr_pos[0] >= 0 and not (self.curr_pos[0], self.curr_pos[1] - 1) in self.blocked_tiles :
+            if not (self.curr_pos[0] , self.curr_pos[1] + 1) in self.visited_tiles :
+                preferred_actions.append('right')
+        if self.curr_pos[0] >= 1 and not (self.curr_pos[0] - 1, self.curr_pos[1]) in self.blocked_tiles :
             legal_actions.append('up')
-        if self.curr_pos[0] < self.board_width and not (self.curr_pos[0], self.curr_pos[1] + 1) in self.blocked_tiles :
+            if not (self.curr_pos[0] - 1, self.curr_pos[1]) in self.visited_tiles :
+                preferred_actions.append('up')
+        if self.curr_pos[0] < self.board_height - 1 and not (self.curr_pos[0] + 1, self.curr_pos[1]) in self.blocked_tiles :
             legal_actions.append('down')
+            if not (self.curr_pos[0] + 1, self.curr_pos[1]) in self.visited_tiles :
+                preferred_actions.append('down')
         
-        return legal_actions
-
+        if len(preferred_actions) == 0 :
+            return legal_actions
+        else :
+            return preferred_actions
 
 class Qlearning_with_GUI() :
-    def __init__(self, frame, epsilon = 0.25) :
+    def __init__(self, frame, epsilon = 0.75) :
         self.frame = frame
         self.epsilon = epsilon
         
@@ -119,6 +147,7 @@ class Qlearning_with_GUI() :
         self.agent = Agent((self.env.board_height, self.env.board_width))
         self.start_pos = start_pos
         self.setup_frame()
+        self.set_pad_l()
         
     def setup_frame(self) :
         # Board visualisation constants
@@ -132,6 +161,9 @@ class Qlearning_with_GUI() :
         self.grid_color = "blue"
         self.grid_width = 2
         self.draw_mode = 0
+        self.cmap_negvval = np.array([179,0,0])
+        self.cmap_posvval = np.array([0,153,0])
+        self.cmap_neg_to_pos = self.cmap_posvval - self.cmap_negvval
 
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
@@ -142,7 +174,7 @@ class Qlearning_with_GUI() :
         frame.add_button("Stop Sim", self.stop_sim)
         frame.add_button("Reset", self.reset)
         frame.set_draw_handler(self.draw_board)
-        self.timer_play = simplegui.create_timer(1000, self.single_step)
+        self.timer_play = simplegui.create_timer(1, self.single_step)
 
 
     def run_sim(self) :
@@ -153,9 +185,10 @@ class Qlearning_with_GUI() :
     def draw_board(self, canvas):
         Qest = self.agent.estQ
         Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
-        m, n = Vest.shape
-        for i in range(m):
-            for j in range(n):
+        cmap = (np.arctan(Vest)/np.pi + 0.5)
+        num_squares_along_height, num_squares_along_width = Vest.shape
+        for i in range(num_squares_along_height):
+            for j in range(num_squares_along_width):
                 rect = [
                     self.ij2xy(i, j),
                     self.ij2xy(i, j+1),
@@ -163,54 +196,60 @@ class Qlearning_with_GUI() :
                     self.ij2xy(i+1, j),
                 ]
                 color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
-                canvas.draw_polygon(
-                    rect, self.grid_width, 
-                    self.grid_color, 
-                    color
-                )
-                if color == self.cmap["other"]:
+                if color == "black" :
+                    canvas.draw_polygon(
+                        rect, self.grid_width, 
+                        self.grid_color, 
+                        f"rgb{tuple( (self.cmap_negvval + cmap[i,j]*self.cmap_neg_to_pos).astype(int) )}"
+                    )
+                elif color == self.cmap["other"]:
                     canvas.draw_text(
                         str(int(self.env.board[i, j])),
                         self.ij2xy(i+0.5, j+0.5),
                         font_size=20,
                         font_color="black"
                     )
-        i, j,  = self.player_pos
-        _, _, cell_size = self.get_pad_l()
+                else :
+                    canvas.draw_polygon(
+                        rect, self.grid_width, 
+                        self.grid_color, 
+                        color
+                    )
+        i, j  = self.env.curr_pos
         canvas.draw_circle(
             self.ij2xy(i+0.5, j+0.5), 
-            cell_size//4, 2, 
+            self.cell_size//4, 2, 
             "yellow", "yellow"
         )
 
-    def get_pad_l(self):
-        m, n = self.env.board_width, self.env.board_height
-        w, h = self.canvas_width//m, self.canvas_height//n
-        l = min(w, h)
-        if w>h:
-            x_pad = (self.canvas_width - m*l)//2
+    def set_pad_l(self):
+        num_squares_along_width, num_squares_along_height = self.env.board_width, self.env.board_height
+        cell_w, cell_h = self.canvas_width//num_squares_along_width, self.canvas_height//num_squares_along_height
+        cell_size = min(cell_w, cell_h)
+        if cell_w>cell_h:
+            x_pad = (self.canvas_width - num_squares_along_width*cell_size)//2
             y_pad = 0
         else:
             x_pad = 0
-            y_pad = (self.canvas_height - n*l)//2
-        return x_pad, y_pad, l
+            y_pad = (self.canvas_height - num_squares_along_height*cell_size)//2
+        
+        self.x_pad = x_pad
+        self.y_pad = y_pad
+        self.cell_size = cell_size
 
-    def ij2xy(self, i, j):
-        x_pad, y_pad, l = self.get_pad_l()
 
-        x = x_pad + i*l 
-        y = y_pad + j*l
+    def ij2xy(self, index0, index1):
+        x = self.x_pad + index0*self.cell_size 
+        y = self.y_pad + index1*self.cell_size
         return x, y
 
     def xy2ij(self, x, y, round=True):
-        x_pad, y_pad, l = self.get_pad_l()
-
-        i = (x-x_pad)/l
-        j = (y-y_pad)/l
+        index0 = (x- self.x_pad)/self.cell_size
+        index1 = (y- self.y_pad)/self.cell_size
         if round:
-            i = math.floor(i)
-            j = math.floor(j)
-        return i, j
+            index0 = math.floor(index0)
+            index1 = math.floor(index1)
+        return index0, index1
     
 
     def reset(self) :
@@ -220,6 +259,7 @@ class Qlearning_with_GUI() :
     def single_step(self) :
         available_actions = self.env.get_legal_actions()
         if len(available_actions) == 0 :
+            raise("No actions available")
             return
         
         action = self.agent.select_action(self.env.curr_pos, available_actions, self.epsilon)
@@ -228,6 +268,7 @@ class Qlearning_with_GUI() :
         self.agent.update_state(curr_state,action,next_state,reward)
 
         if done :
+            # time.sleep(1)
             self.env.reset()
 
 if __name__ == "__main__" :
