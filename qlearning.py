@@ -29,7 +29,7 @@ class Agent :
         qvalues = []
         for action in available_actions :
             action_idx = self.action_to_index[action]
-            qvalues.append(self.estQ[*state, action_idx])
+            qvalues.append(self.estQ[state[0], state[1], action_idx])
 
         if toss < epsilon :
             # We would like to explore more with higher value of epsilon
@@ -41,9 +41,9 @@ class Agent :
     def update_state(self, state, action, new_state, reward) :
         # Q = (1 - alpha)*Q(st,at) + alpha(rt + gamma * max_a Q(st+1, a))
         action = self.action_to_index[action]
-        Qlhs = (1 - self.alpha)* self.estQ[ *state,action]
-        Qrhs = self.alpha * ( reward + self.gamma * np.max(self.estQ[ *new_state, : ]))
-        self.estQ[*state,action] = Qlhs + Qrhs
+        Qlhs = (1 - self.alpha)* self.estQ[ state[0], state[1],action]
+        Qrhs = self.alpha * ( reward + self.gamma * np.max(self.estQ[ new_state[0], new_state[1], : ]))
+        self.estQ[state[0], state[1],action] = Qlhs + Qrhs
     
 
 class Mdp_env :
@@ -239,13 +239,13 @@ class Qlearning_with_GUI() :
 
 
     def ij2xy(self, index0, index1):
-        x = self.x_pad + index0*self.cell_size 
-        y = self.y_pad + index1*self.cell_size
+        x = self.x_pad + index1*self.cell_size 
+        y = self.y_pad + index0*self.cell_size
         return x, y
 
     def xy2ij(self, x, y, round=True):
-        index0 = (x- self.x_pad)/self.cell_size
-        index1 = (y- self.y_pad)/self.cell_size
+        index1 = (x- self.x_pad)/self.cell_size
+        index0 = (y- self.y_pad)/self.cell_size
         if round:
             index0 = math.floor(index0)
             index1 = math.floor(index1)
