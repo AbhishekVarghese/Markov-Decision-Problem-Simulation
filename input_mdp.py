@@ -46,6 +46,7 @@ class MDPGUI:
         self.frame = frame
 
         self.board = np.zeros((4, 4))
+        self.done_tiles = []
         self.player_pos = (2, 0)
         m, n = self.board.shape
         self.transition_prob = 0.8
@@ -66,10 +67,10 @@ class MDPGUI:
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
 
-        self.frame.add_label("Set Input Configurations")
+        # self.frame.add_label("Set Input Configurations")
         # self.frame.add_label("(Note: You need to press enter after every text input)")
         
-        self.frame.add_label("\n"*10)
+        # self.frame.add_label("\n"*10)
 
         self.w_label = self.frame.add_input("Grid Width (Type or adjust)", self.board_input_handler(1), width=100)
         self.w_label.set_text(str(m))
@@ -88,7 +89,8 @@ class MDPGUI:
         self.frame.add_button("Draw -1 Reward", self.draw_mode_handler(-1), width = 200)
         self.frame.add_button("Draw Wall", self.draw_mode_handler(-10), width = 200)
         self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
-        self.frame.add_button("Erase Reward", self.draw_mode_handler(0), width = 200)
+        self.frame.add_button("Mark Done Tiles", self.draw_mode_handler("done"), width = 200)
+        self.frame.add_button("Erase", self.draw_mode_handler(0), width = 200)
 
         self.frame.add_label("\n"*10)
         self.frame.add_button("Set Start Position", self.set_start_pos, width = 200)
@@ -153,7 +155,11 @@ class MDPGUI:
             return
         if self.draw_mode == "start_pos":
             self.player_pos = (i, j)
+        elif self.draw_mode == "done":
+            self.done_tiles.append((i, j))
         else:
+            if self.draw_mode == 0 and (i, j) in self.done_tiles:
+                self.done_tiles.remove((i, j))
             self.board[i, j] = self.draw_mode
 
     def board_button_handler(self, ax, delta):
@@ -189,9 +195,13 @@ class MDPGUI:
             for j in range(min(cur_n, n)):
                 new_board[i, j] = self.board[i, j]
         i, j = self.player_pos
-        if i >= m or j >= n or i < 0 or j < 0:
+        def check_pos(l):
+            i, j = l 
+            return i < m and j < n and i >= 0 and j >= 0
+        if not check_pos(self.player_pos):
             self.player_pos = (0, 0)
         self.board = new_board
+        self.done_tiles = [pos for pos in self.done_tiles if check_pos(pos)]
 
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
 
@@ -244,6 +254,19 @@ class MDPGUI:
                         font_size=20,
                         font_color="black"
                     )
+                if (i, j) in self.done_tiles:
+                    rect = [
+                        self.ij2xy(i, j+1),
+                        self.ij2xy(i+0.2, j+1),
+                        self.ij2xy(i+0.2, j+0.8),
+                        self.ij2xy(i, j+0.8),
+                    ]
+                    canvas.draw_polygon(
+                        rect, 1, 
+                        "white", 
+                        "white"
+                    )
+
         i, j,  = self.player_pos
         _, _, cell_size = self.get_pad_l()
         canvas.draw_circle(
@@ -256,6 +279,6 @@ class MDPGUI:
 if __name__ == "__main__" :
     canvas_width = 700
     canvas_height = 500
-    frame = simplegui.create_frame("MDP Visualization", canvas_width, canvas_height)
+    frame = simplegui.create_frame("MDP Visualization - Set Input Configurations", canvas_width, canvas_height)
     mdp = MDPGUI(frame)
     mdp.start()
