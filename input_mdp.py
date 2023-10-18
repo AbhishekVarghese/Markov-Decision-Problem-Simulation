@@ -116,6 +116,7 @@ class MDPGUI:
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
 
     def release_control(self) :
+        self.draw_mode = None
         self.frame._controls = []
         self.frame._draw_controlpanel()
         self.send_board_data_to(self.board, self.player_pos)
@@ -153,7 +154,9 @@ class MDPGUI:
         i, j = self.xy2ij(x, y)
         if i >= self.board.shape[0] or j >= self.board.shape[1] or i < 0 or j < 0:
             return
-        if self.draw_mode == "start_pos":
+        elif self.draw_mode is None:
+            return
+        elif self.draw_mode == "start_pos":
             self.player_pos = (i, j)
         elif self.draw_mode == "done":
             self.done_tiles.append((i, j))
