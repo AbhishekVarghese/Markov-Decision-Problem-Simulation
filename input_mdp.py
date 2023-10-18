@@ -167,10 +167,10 @@ class MDPGUI:
             m, n = self.board.shape
             if ax == 0:
                 m+=delta
-                self.w_label.set_text(str(m))
+                self.h_label.set_text(str(m))
             else:
                 n+=delta
-                self.h_label.set_text(str(n))
+                self.w_label.set_text(str(n))
             assert m>0 and n>0, "Either width or height has become zero"
             self.update_board(m, n)
         return handler
