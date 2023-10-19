@@ -119,17 +119,16 @@ class MDPGUI:
         self.draw_mode = None
         self.frame._controls = []
         self.frame._draw_controlpanel()
-        self.send_board_data_to(self.board, self.player_pos)
+        self.send_board_data_to(self.board, self.player_pos, self.transition_prob)
 
     def start(self):
         try:
             self.frame.start()
         except AssertionError as e:
             print("Assertion error: ", e)
-            self.w_label._input_pos = 0
-            self.h_label._input_pos = 0
-            self.c_reward._input_pos = 0
-            self.prob._input_pos = 0
+            for control in self.frame._controls:
+                if hasattr(control, "_input_handler"):
+                    control._input_pos = 0
             self.start()
 
     def stop(self,*args) :

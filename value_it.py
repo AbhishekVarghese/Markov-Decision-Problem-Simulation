@@ -14,20 +14,54 @@ class ValueIteration():
         self.iteration2values = []
         self.current_iter = 0
 
-    def run(self, max_iters, discount, reset=False):
+    def shift_arr(self, arr, direction, min_possible):
+        if direction == "right":
+            shifted = np.pad(
+                arr[:, 1:], 
+                pad_width=((0, 0), (0, 1)),
+                constant_values=min_possible
+            )
+        elif direction == "left":
+            shifted = np.pad(
+                arr[:, :-1], 
+                pad_width=((0, 0), (1, 0)),
+                constant_values=min_possible
+            )
+        elif direction == "up":
+            shifted = np.pad(
+                arr[1:, :], 
+                pad_width=((0, 1), (0, 0)),
+                constant_values=min_possible
+            )
+        elif direction == "down":
+            shifted = np.pad(
+                arr[:-1, :], 
+                pad_width=((1, 0), (0, 0)),
+                constant_values=min_possible
+            )
+        return shifted
+
+
+
+    def run(self, max_iters, discount, p, reset=False):
         self.max_iters = max_iters
         self.current_iter = 0
         min_possible = np.min(self.rewards) - 1
 
-        values = self.rewards.copy()
-        values[values == self.wall_reward] = min_possible
-        values[values == 0] = min_possible
+        # values = self.rewards.copy()
+        # values[values == self.wall_reward] = min_possible
+        # values[values == 0] = min_possible
+        values = np.zeros(self.rewards.shape)
 
         if reset:
             self.iteration2values = []
 
         wall_mask = self.rewards == self.wall_reward
 
+        directions = ["left", "right", "up", "down"]
+        rewards_shifted = {
+            di: self.shift_arr(self.rewards, di, self.wall_reward) for di in directions
+        }
 
         if len(self.iteration2values) == 0:
             self.iteration2values.append(values)
@@ -37,34 +71,33 @@ class ValueIteration():
             self.current_iter = i 
 
             prev_values = self.iteration2values[i-1].copy()
-            prev_left = discount * np.pad(
-                prev_values[:, 1:], 
-                pad_width=((0, 0), (0, 1)),
-                constant_values=min_possible
+
+            prev_shifted = {
+                di:self.shift_arr(prev_values, di, 0) for di in directions
+            }
+
+            proposals = {
+                di: rewards_shifted[di] + discount * prev_shifted[di]
+                for di in directions
+            }
+
+            new_values = [
+                np.sum(np.stack([
+                    p * proposals[di2] if di2 == di else (1-p)/3 * proposals[di2]
+                    for di2 in directions
+                ], axis=0), axis=0)
+                for di in directions
+            ]
+            # Action Stay
+            new_values.append(
+                self.rewards + discount * prev_values
             )
-            prev_right = discount * np.pad(
-                prev_values[:, :-1], 
-                pad_width=((0, 0), (1, 0)),
-                constant_values=min_possible
-            )
-            prev_up = discount * np.pad(
-                prev_values[1:, :], 
-                pad_width=((0, 1), (0, 0)),
-                constant_values=min_possible
-            )
-            prev_down = discount * np.pad(
-                prev_values[:-1, :], 
-                pad_width=((1, 0), (0, 0)),
-                constant_values=min_possible
-            )
+
             curr_values = np.stack(
-                (prev_values, prev_left, prev_right, prev_up, prev_down),
-                axis=0
+                new_values, axis=0
             )
-            # print(curr_values.shape)
             curr_values = curr_values.max(axis=0)
-            curr_values[wall_mask] = min_possible
-            # print(curr_values.shape)
+            curr_values[wall_mask] = self.wall_reward
             self.iteration2values.append(
                 curr_values
             )
@@ -126,7 +159,8 @@ class ValueIterationGUI(MDPGUI):
             (1-j, i) for i, j in self.arrow_polygons["right"]
         ]
 
-    def take_over(self, board, start_pos):
+    def take_over(self, board, start_pos, p):
+        self.p = p
         self.rewards = board
         self.board = board
         self.curr_pos = start_pos
@@ -163,7 +197,7 @@ class ValueIterationGUI(MDPGUI):
         self.algorithm = ValueIteration(
             self.rewards,
         )
-        self.algorithm.run(self.iteration, self.discount)
+        self.algorithm.run(self.iteration, self.discount, self.p)
         self.update_values()
 
         self.draw_status = None
@@ -241,7 +275,7 @@ class ValueIterationGUI(MDPGUI):
             assert (x >= 0) and (x <= 1), "Error: Discount going out of bounds"
             self.discount = x
             self.d_label.set_text("{:.3f}".format(self.discount))
-            self.algorithm.run(self.iteration, self.discount, reset=True)
+            self.algorithm.run(self.iteration, self.discount, self.p, reset=True)
             self.update_values()
 
         if mode == "set":
@@ -263,7 +297,7 @@ class ValueIterationGUI(MDPGUI):
             self.it_label.set_text(str(self.iteration))
             if self.iteration > self.algorithm.max_iters:
                 new_max_iter = (self.iteration//self.maxiter_increment + 1) * self.maxiter_increment
-                self.algorithm.run(new_max_iter, self.discount)
+                self.algorithm.run(new_max_iter, self.discount, self.p)
             self.update_values()
 
         if mode == "set":
