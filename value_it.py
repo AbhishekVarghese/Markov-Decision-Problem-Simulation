@@ -17,10 +17,11 @@ class ValueIteration():
     def run(self, max_iters, discount, reset=False):
         self.max_iters = max_iters
         self.current_iter = 0
-        min_possible = np.min(self.rewards) - 100
+        min_possible = np.min(self.rewards) - 1
 
         values = self.rewards.copy()
         values[values == self.wall_reward] = min_possible
+        values[values == 0] = min_possible
 
         if reset:
             self.iteration2values = []
@@ -174,7 +175,7 @@ class ValueIterationGUI(MDPGUI):
             self.iteration = x
             self.it_label.set_text(str(self.iteration))
             if self.iteration > self.algorithm.max_iters:
-                new_max_iter = self.iteration//self.maxiter_increment * (self.maxiter_increment + 1)
+                new_max_iter = (self.iteration//self.maxiter_increment + 1) * self.maxiter_increment
                 self.algorithm.run(new_max_iter, self.discount)
             self.update_values()
 
