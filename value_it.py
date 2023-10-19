@@ -79,6 +79,10 @@ class ValueIterationGUI(MDPGUI):
         self.iteration_increment = 1
         self.maxiter_increment = 20
 
+        self.timer_speed = 1
+        self.speed_increment = 0.1
+        self.timer_multiplier = 50
+
         self.cmap = {
             0: "black",
             1: "green",
@@ -91,7 +95,6 @@ class ValueIterationGUI(MDPGUI):
         self.draw_mode = 0
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
-
 
     def take_over(self, board, start_pos):
         self.rewards = board
@@ -114,6 +117,10 @@ class ValueIterationGUI(MDPGUI):
         self.frame.add_label("\n"*10)
 
         self.frame.add_button("Show all iterations", self.showall_iteration, width = 100)
+        self.speed_label = self.frame.add_input("Speed", self.update_speed("set"), width=100)
+        self.speed_label.set_text(str(self.timer_speed))
+        self.frame.add_button("+", self.update_speed("+"), width = 100)
+        self.frame.add_button("--", self.update_speed("-"), width = 100)
 
         self.frame.add_label("\n"*10)
 
@@ -167,7 +174,8 @@ class ValueIterationGUI(MDPGUI):
             self.iteration = x
             self.it_label.set_text(str(self.iteration))
             if self.iteration > self.algorithm.max_iters:
-                self.algorithm.run(self.algorithm.max_iters + self.maxiter_increment, self.discount)
+                new_max_iter = self.iteration//self.maxiter_increment * (self.maxiter_increment + 1)
+                self.algorithm.run(new_max_iter, self.discount)
             self.update_values()
 
         if mode == "set":
@@ -182,6 +190,30 @@ class ValueIterationGUI(MDPGUI):
                 common(x)
             return handler
 
+    def update_speed(self, mode):
+        def common(x):
+            assert (x >= 0), "Error: Speed has to be >=0"
+            self.timer_speed = x
+            self.speed_label.set_text("{:.3f}".format(self.timer_speed))
+            try:
+                self.timer_play._interval = max(1, self.timer_multiplier // self.timer_speed)
+            except AttributeError:
+                return
+
+
+        if mode == "set":
+            def handler(x):
+                x = int(float(x))
+                common(x)
+            return handler
+        elif mode == "+" or mode == "-":
+            delta = self.speed_increment if mode == "+" else -self.speed_increment
+            def handler():
+                x = self.timer_speed + delta
+                common(x)
+            return handler
+
+
     def value_it_step(self):
         if self.intermediate_iter > self.iteration:
             self.timer_play.stop()
@@ -193,12 +225,12 @@ class ValueIterationGUI(MDPGUI):
 
         self.intermediate_iter += 1
 
-
     def showall_iteration(self):
-        self.intermediate_iter = 0
-        self.timer_play = simplegui.create_timer(50, self.value_it_step)
+        self.intermediate_iter = 1
+        interval = max(1, self.timer_multiplier // self.timer_speed)
+        self.timer_play = simplegui.create_timer(interval, self.value_it_step)
         self.timer_play.start()
-    
+        
     def show_policies(self):
         pass
 
