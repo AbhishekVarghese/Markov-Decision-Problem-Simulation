@@ -75,9 +75,9 @@ class ValueIterationGUI(MDPGUI):
         self.discount = discount
         self.discount_increment = 0.05
 
-        self.iteration = 100
-        self.iteration_increment = 10
-        self.maxiter_increment = 100
+        self.iteration = 20
+        self.iteration_increment = 1
+        self.maxiter_increment = 20
 
         self.cmap = {
             0: "black",
@@ -129,12 +129,15 @@ class ValueIterationGUI(MDPGUI):
         self.algorithm.run(self.iteration, self.discount)
         self.update_values()
 
+        self.draw_status = None
         self.frame.set_draw_handler(self.draw_board)
 
 
 
-    def update_values(self):
-        self.values = self.algorithm.iteration2values[self.iteration]
+    def update_values(self, iteration=None):
+        if iteration is None:
+            iteration = self.iteration
+        self.values = self.algorithm.iteration2values[iteration]
         mx, mn = self.values.max(), self.values.min()
         self.values = (self.values - mn) / (mx - mn) if mx != mn else np.ones(self.values.shape)
 
@@ -179,8 +182,22 @@ class ValueIterationGUI(MDPGUI):
                 common(x)
             return handler
 
+    def value_it_step(self):
+        if self.intermediate_iter > self.iteration:
+            self.timer_play.stop()
+            self.draw_status = None
+            return
+        
+        self.update_values(self.intermediate_iter)
+        self.draw_status = "Iteration {:3d}/{:3d}".format(self.intermediate_iter, self.iteration)
+
+        self.intermediate_iter += 1
+
+
     def showall_iteration(self):
-        pass
+        self.intermediate_iter = 0
+        self.timer_play = simplegui.create_timer(50, self.value_it_step)
+        self.timer_play.start()
     
     def show_policies(self):
         pass
@@ -206,25 +223,32 @@ class ValueIterationGUI(MDPGUI):
                         self.grid_color, 
                         value_color
                     )
-                elif color == self.cmap["other"]:
-                    canvas.draw_text(
-                        str(int(self.board[i, j])),
-                        self.ij2xy(i+0.5, j+0.5),
-                        font_size=20,
-                        font_color="black"
-                    )
                 else :
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 
                         color
                     )
+                    if color == self.cmap["other"]:
+                        canvas.draw_text(
+                            str(int(self.board[i, j])),
+                            self.ij2xy(i+0.5, j+0.5),
+                            font_size=20,
+                            font_color="black"
+                        )
         i, j  = self.curr_pos
         canvas.draw_circle(
             self.ij2xy(i+0.5, j+0.5), 
             self.l//4, 2, 
             "yellow", "yellow"
         )
+        if self.draw_status is not None:
+            self.frame._canvas.draw_text(
+                self.draw_status,
+                (20, 30),
+                font_size=20,
+                font_color="white"
+            )
 
 
 if __name__ == "__main__" :
