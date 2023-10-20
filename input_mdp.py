@@ -49,7 +49,7 @@ class MDPGUI:
         self.done_tiles = []
         self.player_pos = (2, 0)
         m, n = self.board.shape
-        self.transition_prob = 0.8
+        self.transition_prob = 1.0
 
         # Board visualisation constants
         self.cmap = {
@@ -62,6 +62,43 @@ class MDPGUI:
         self.grid_color = "blue"
         self.grid_width = 2
         self.draw_mode = 0
+
+        self.current_board_name = "My Board"
+        self.current_board_num = 0
+        self.saved_boards = {
+            self.current_board_name: self.board,
+            "maze 1": 
+            {
+                "board": np.array(
+                    [
+                        [0, 0, 0, 0, 0, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, 0, 0, 0, -10, -10, -10, 0, 0, -10, -10, 0, -10, -10, 0, 0, 0, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, -10, 0, -10, -10, 0, 0, 0, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, 0, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, 0, -10, 0, -10, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, 0, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, 0, -10, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, 0, -10, -10, -10, -10, 0, -10, 0, 0, -10, -10, 0, -10, -10, -10, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, -10, -10, -10, 0, 0, -10, -10, 0, -10, -10, 0, -10, 0, 0, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, -10, -10, 0, 0, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, -10, 0, 0, -10, 0, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, 0, 0, -10, 0, 0, -10, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, -10, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, 0, 0, 0, 1],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, -10, 0, -10, 0, 0, 0, -10, -10, 0, -10, 0, -10, -10, -10, -10, 0, 0, -10, 0, 0, 0, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, 0, 0, -10, -10, -10, -10, -10, -10, 0, -10, 0, 0, -10, -10, -10, -10, 0, -10, 0, -10, 0, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, -10, -10, -10, 0, -10, -10, 0, 0, 0, -10, -10, 0, 0, 0, -10, 0, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, 0, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, 0, 0, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, 0, -10, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, 0, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, -10, -10, -10, -10, 0, -10, 0, 0, 0, 0, 0, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, 0, -10, 0, 0, 0, 0, -10, -10, 0, 0, -10, -10, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, -10, -10, -10, 0, -10, -10, -10, 0, 0, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, 0, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                    ]
+                ),
+                "player_pos": (10, 0),
+                "done_tiles": []
+            }
+        }
+        
         
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
@@ -88,17 +125,23 @@ class MDPGUI:
         self.frame.add_button("Draw +1 Reward", self.draw_mode_handler(1), width = 200)
         self.frame.add_button("Draw -1 Reward", self.draw_mode_handler(-1), width = 200)
         self.frame.add_button("Draw Wall", self.draw_mode_handler(-10), width = 200)
-        self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
-        self.frame.add_button("Mark Done Tiles", self.draw_mode_handler("done"), width = 200)
+        # self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
+        self.frame.add_button("Mark Done States", self.draw_mode_handler("done"), width = 200)
         self.frame.add_button("Erase", self.draw_mode_handler(0), width = 200)
 
         self.frame.add_label("\n"*10)
         self.frame.add_button("Set Start Position", self.set_start_pos, width = 200)
 
 
+        # self.frame.add_label("\n"*10)
+        # self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
+        # self.prob.set_text(str(self.transition_prob))
+
         self.frame.add_label("\n"*10)
-        self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
-        self.prob.set_text(str(self.transition_prob))
+        self.load_board_format = "Load Board: {}"
+        self.load_board_label = self.frame.add_label(self.load_board_format.format(self.current_board_name), width = 200)
+        self.frame.add_button("Next", self.load_board_handler(1), width = 100)
+        self.frame.add_button("Prev", self.load_board_handler(-1), width = 100)
 
         self.frame.add_label("\n"*10)
         self.frame.add_button("Begin", self.release_control, width = 200)
@@ -188,6 +231,24 @@ class MDPGUI:
             assert m>0 and n>0, "Either width or height has become zero"
             self.update_board(m, n)
         return handler
+
+    def load_board_handler(self, delta):
+        def handler():
+            self.saved_boards[self.current_board_name] = {
+                "board": self.board,
+                "player_pos": self.player_pos,
+                "done_tiles": self.done_tiles,
+            }
+            self.current_board_num = (self.current_board_num + delta) % len(list(self.saved_boards.keys()))
+            self.current_board_name = list(self.saved_boards.keys())[self.current_board_num]
+            board_config = self.saved_boards[self.current_board_name]
+            self.board, self.player_pos, self.done_tiles = board_config["board"], board_config["player_pos"], board_config["done_tiles"]
+            self.x_pad, self.y_pad, self.l = self.get_pad_l()
+            self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
+        return handler
+
+
+        
 
 
     def update_board(self, m, n):
