@@ -141,7 +141,7 @@ class Qlearning_with_GUI() :
         self.frame = frame
         self.epsilon = epsilon
         
-    def take_over(self, board, start_pos) :
+    def take_over(self, board, start_pos, transition_prob = 1) :
         board = Board(board)
         self.env = Mdp_env(board,start_pos=start_pos)
         self.agent = Agent((self.env.board_height, self.env.board_width))
