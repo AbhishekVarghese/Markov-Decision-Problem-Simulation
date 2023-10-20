@@ -258,15 +258,15 @@ class MDPGUI:
                     )
                 if (i, j) in self.done_tiles:
                     rect = [
-                        self.ij2xy(i, j+1),
-                        self.ij2xy(i+0.2, j+1),
-                        self.ij2xy(i+0.2, j+0.8),
-                        self.ij2xy(i, j+0.8),
+                        self.ij2xy(i + 0.3, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.7),
+                        self.ij2xy(i + 0.3, j+0.7),
                     ]
                     canvas.draw_polygon(
-                        rect, 1, 
+                        rect, 2, 
                         "white", 
-                        "white"
+                        "rgba(0, 0, 0, 0)"
                     )
 
         i, j,  = self.player_pos
