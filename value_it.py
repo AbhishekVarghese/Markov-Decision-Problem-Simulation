@@ -421,7 +421,7 @@ class ValueIterationGUI(MDPGUI):
 
 
 if __name__ == "__main__" :
-    frame = simplegui.create_frame("Value Iteration", 700,500)
+    frame = simplegui.create_frame("Value Iteration", 700,600)
     value_it_gui = ValueIterationGUI(frame)
     inputgui = MDPGUI(frame, send_board_data_to=value_it_gui.take_over)
     inputgui.start()

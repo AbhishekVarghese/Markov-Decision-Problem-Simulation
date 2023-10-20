@@ -2,7 +2,9 @@ import random, time
 import numpy as np
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui 
 import math
-
+import json
+import os
+import copy
 
 
 class DefaultDict(dict):
@@ -66,7 +68,11 @@ class MDPGUI:
         self.current_board_name = "My Board"
         self.current_board_num = 0
         self.saved_boards = {
-            self.current_board_name: self.board,
+            self.current_board_name: {
+                "board": self.board,
+                "player_pos": self.player_pos,
+                "done_tiles": self.done_tiles
+            },
             "maze 1": 
             {
                 "board": np.array(
@@ -98,6 +104,17 @@ class MDPGUI:
                 "done_tiles": []
             }
         }
+        self.save_board_path = "./saved_boards.json"
+        if os.path.exists(self.save_board_path):
+            with open(self.save_board_path, "r") as f:
+                other_saved_boards = json.load(f)
+            for name in other_saved_boards.keys():
+                other_saved_boards[name]["board"] = np.array(other_saved_boards[name]["board"])
+                if name not in self.saved_boards:
+                    self.saved_boards[name] = other_saved_boards[name]
+                elif name == self.current_board_name:
+                    self.saved_boards[name + " (1)"] = other_saved_boards[name]
+
         
         
         # UI parameter imports
@@ -142,6 +159,11 @@ class MDPGUI:
         self.load_board_label = self.frame.add_label(self.load_board_format.format(self.current_board_name), width = 200)
         self.frame.add_button("Next", self.load_board_handler(1), width = 100)
         self.frame.add_button("Prev", self.load_board_handler(-1), width = 100)
+
+        self.frame.add_label("\n"*10)
+        self.save_board_name = self.frame.add_input("Board Name", self.set_board_name, width=100)
+        self.frame.add_button("Save Board", self.save_board, width = 200)
+        # self.frame.add_button("Reset Saved Boards", self.reset_saved_boards, width = 200)
 
         self.frame.add_label("\n"*10)
         self.frame.add_button("Begin", self.release_control, width = 200)
@@ -232,13 +254,17 @@ class MDPGUI:
             self.update_board(m, n)
         return handler
 
+    def save_curr_board(self):
+        self.saved_boards[self.current_board_name] = {
+            "board": self.board,
+            "player_pos": self.player_pos,
+            "done_tiles": self.done_tiles,
+        }
+
+
     def load_board_handler(self, delta):
         def handler():
-            self.saved_boards[self.current_board_name] = {
-                "board": self.board,
-                "player_pos": self.player_pos,
-                "done_tiles": self.done_tiles,
-            }
+            self.save_curr_board()
             self.current_board_num = (self.current_board_num + delta) % len(list(self.saved_boards.keys()))
             self.current_board_name = list(self.saved_boards.keys())[self.current_board_num]
             board_config = self.saved_boards[self.current_board_name]
@@ -247,8 +273,29 @@ class MDPGUI:
             self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
         return handler
 
-
+    def set_board_name(self, x):
+        x = str(x)
+        self.saved_boards = {
+            name if name!= self.current_board_name else x:self.saved_boards[name] 
+            for name in self.saved_boards.keys()
+        }
+        self.current_board_name = x
+        self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
         
+    def save_board(self):
+        self.save_curr_board()
+        saved_boards_list = copy.deepcopy(self.saved_boards)
+        for b in saved_boards_list:
+            saved_boards_list[b]["board"] = saved_boards_list[b]["board"].tolist()
+        s = json.dumps(saved_boards_list, indent=4)
+        s = s.replace(",\n                ", ", ")
+        s = s.replace("[\n                ", "[")
+        s = s.replace("\n            ]", "]")
+        with open(self.save_board_path, "w") as f:
+            f.write(s)
+
+    def reset_saved_boards(self):
+        os.remove(self.save_board_path)
 
 
     def update_board(self, m, n):
@@ -341,7 +388,7 @@ class MDPGUI:
 
 if __name__ == "__main__" :
     canvas_width = 700
-    canvas_height = 500
+    canvas_height = 600
     frame = simplegui.create_frame("MDP Visualization - Set Input Configurations", canvas_width, canvas_height)
     mdp = MDPGUI(frame)
     mdp.start()
