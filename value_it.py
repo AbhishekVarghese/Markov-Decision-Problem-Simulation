@@ -92,14 +92,15 @@ class ValueIteration():
                 for di in directions
             ]
             # Action Stay
-            new_values.append(
-                self.rewards + discount * prev_values
-            )
+            # new_values.append(
+            #     self.rewards + discount * prev_values
+            # )
 
             curr_values = np.stack(
                 new_values, axis=0
             )
             curr_values = curr_values.max(axis=0)
+            curr_values += self.rewards
             curr_values[wall_mask] = self.wall_reward
             self.iteration2values.append(
                 curr_values
@@ -387,9 +388,9 @@ class ValueIterationGUI(MDPGUI):
         self.cmap_negvval = np.array([170,0,0])
         self.cmap_posvval = np.array([0,150,0])
         if val < 0:
-            color = abs(val)/abs(min_val) * self.cmap_negvval
+            color = abs(val)/abs(min_val+1e-10) * self.cmap_negvval
         else:
-            color = abs(val)/abs(max_val) * self.cmap_posvval
+            color = abs(val)/abs(max_val+1e-10) * self.cmap_posvval
         color = color.tolist()
         color = [int(c) for c in color]
         color_str = "rgb({}, {}, {})".format(*color)
