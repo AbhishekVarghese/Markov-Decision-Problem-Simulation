@@ -7,6 +7,10 @@ from input_mdp import MDPGUI,Board
 import math
 import time
 
+
+def sigmoid(z):
+    return 1/(1 + np.exp(-z))
+
 class Agent :
     def __init__(self, state_space_shape, gamma = 0.9,  alpha = 0.1) :
         self.alpha = alpha #learning rate
@@ -102,9 +106,7 @@ class Mdp_env :
             else :
                 warnings.warn(f"You can't go down from this position {self.curr_pos}")
         
-        print("Took action ", action, self.curr_pos)
         reward  = self.reward_dict[self.curr_pos]
-        print(self.done_tiles)
         if self.curr_pos in self.done_tiles :
             done = True
         self.visited_tiles.append(self.curr_pos)
@@ -137,12 +139,13 @@ class Mdp_env :
             return preferred_actions
 
 class Qlearning_with_GUI() :
-    def __init__(self, frame, epsilon = 0.75) :
+    def __init__(self, frame, epsilon = 1) :
         self.frame = frame
         self.epsilon = epsilon
         
     def take_over(self, board, start_pos, transition_prob = 1) :
         board = Board(board)
+        print(board.board)
         self.env = Mdp_env(board,start_pos=start_pos)
         self.agent = Agent((self.env.board_height, self.env.board_width))
         self.start_pos = start_pos
@@ -161,8 +164,8 @@ class Qlearning_with_GUI() :
         self.grid_color = "blue"
         self.grid_width = 2
         self.draw_mode = 0
-        self.cmap_negvval = np.array([179,0,0])
-        self.cmap_posvval = np.array([0,153,0])
+        self.cmap_negvval = np.array([224, 36, 36])
+        self.cmap_posvval = np.array([39, 166, 39])
         self.cmap_neg_to_pos = self.cmap_posvval - self.cmap_negvval
 
         # UI parameter imports
@@ -185,7 +188,7 @@ class Qlearning_with_GUI() :
     def draw_board(self, canvas):
         Qest = self.agent.estQ
         Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
-        cmap = (np.arctan(Vest)/np.pi + 0.5)
+        cmap = np.tanh(np.pi*Vest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
         num_squares_along_height, num_squares_along_width = Vest.shape
         for i in range(num_squares_along_height):
             for j in range(num_squares_along_width):
@@ -197,10 +200,19 @@ class Qlearning_with_GUI() :
                 ]
                 color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 if color == "black" :
+                    t = cmap[i,j]
+                    curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                    print(curr_color)
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 
-                        f"rgb{tuple( (self.cmap_negvval + cmap[i,j]*self.cmap_neg_to_pos).astype(int) )}"
+                        curr_color
+                    )
+                    canvas.draw_text(
+                        "%.2f"% Vest[i,j],
+                        self.ij2xy(i+0.5, j+0.5),
+                        font_size=12,
+                        font_color="white"
                     )
                 elif color == self.cmap["other"]:
                     canvas.draw_text(
