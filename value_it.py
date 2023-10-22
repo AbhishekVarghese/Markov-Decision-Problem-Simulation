@@ -47,12 +47,14 @@ class ValueIteration():
     def run(self, max_iters, discount, p, reset=False):
         self.max_iters = max_iters
         self.current_iter = 0
-        min_possible = np.min(self.rewards) - 1
+        min_possible = np.min(self.rewards)
 
         # values = self.rewards.copy()
         # values[values == self.wall_reward] = min_possible
         # values[values == 0] = min_possible
+        # values = min_possible*np.ones(self.rewards.shape)
         values = np.zeros(self.rewards.shape)
+
 
         if reset:
             self.reset()
@@ -122,7 +124,7 @@ class ValueIterationGUI(MDPGUI):
             0: "black",
             1: "green",
             -1: "red",
-            -10: "blue",
+            -10: "grey",
             "other": "cyan"
         }
         self.grid_color = "blue"
@@ -135,7 +137,7 @@ class ValueIterationGUI(MDPGUI):
         self.draw_agent_path = False
         self.agent_path = []
 
-        self.arrow_color = "rgb(0, 255, 0)"
+        self.arrow_color = "rgb(255, 255, 255)"
         self.arrow_width = 0.02
 
         w = self.arrow_width
@@ -236,15 +238,15 @@ class ValueIterationGUI(MDPGUI):
         self.values = self.algorithm.iteration2values[iteration].copy()
         mx, mn = self.values.max(), self.values.min()
 
-        # adjust minimum (only for better scaling)
-        if len(np.unique(self.values)) > 2:
-            new_val = self.values.copy()
-            new_val[self.values == mn] = mx
-            second_mn = new_val.min()
-            self.values[self.values == mn] = second_mn
-            mx, mn = self.values.max(), self.values.min()
+        # # adjust minimum (only for better scaling)
+        # if len(np.unique(self.values)) > 2:
+        #     new_val = self.values.copy()
+        #     new_val[self.values == mn] = mx
+        #     second_mn = new_val.min()
+        #     self.values[self.values == mn] = second_mn
+        #     mx, mn = self.values.max(), self.values.min()
 
-        self.values = (self.values - mn) / (mx - mn) if mx != mn else np.ones(self.values.shape)
+        # self.values = (self.values - mn) / (mx - mn) if mx != mn else np.ones(self.values.shape)
         self.update_policy()
 
     def update_policy(self):
@@ -381,8 +383,21 @@ class ValueIterationGUI(MDPGUI):
     def show_agent_path(self):
         self.draw_agent_path = not self.draw_agent_path
 
+    def value2color(self, val, max_val, min_val):
+        self.cmap_negvval = np.array([170,0,0])
+        self.cmap_posvval = np.array([0,150,0])
+        if val < 0:
+            color = abs(val)/abs(min_val) * self.cmap_negvval
+        else:
+            color = abs(val)/abs(max_val) * self.cmap_posvval
+        color = color.tolist()
+        color = [int(c) for c in color]
+        color_str = "rgb({}, {}, {})".format(*color)
+        return color_str
+
     def draw_board(self, canvas):
         m, n = self.board.shape
+        max_val, min_val = self.values.max(), self.values.min()
         for i in range(m):
             for j in range(n):
                 rect = [
@@ -393,23 +408,17 @@ class ValueIterationGUI(MDPGUI):
                 ]
                 color = self.cmap.get(self.board[i, j], self.cmap["other"])
                 if color == "black" :
-                    value_color = "rgb({0}, {0}, {0})".format(int(255*self.values[i, j]))
+                    # value_color = "rgb({0}, {0}, {0})".format(int(255*self.values[i, j]))
+                    value_color = self.value2color(self.values[i, j], max_val, min_val)
                     if self.draw_agent_path and (i, j) in self.agent_path:
                         value_color = "yellow"
+                    
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 
                         value_color
                     )
-                    if self.draw_policy:
-                        if self.policy[i][j] in self.arrow_polygons.keys():
-                            polygon = self.arrow_polygons[self.policy[i][j]]
-                            polygon = [self.ij2xy(i+di, j+dj) for di, dj in polygon]
-                            canvas.draw_polygon(
-                                polygon, 0, 
-                                self.arrow_color, 
-                                self.arrow_color
-                            )
+                    
 
 
                 else :
@@ -425,6 +434,15 @@ class ValueIterationGUI(MDPGUI):
                             font_size=20,
                             font_color="black"
                         )
+                if self.draw_policy and color != "grey":
+                    if self.policy[i][j] in self.arrow_polygons.keys():
+                        polygon = self.arrow_polygons[self.policy[i][j]]
+                        polygon = [self.ij2xy(i+di, j+dj) for di, dj in polygon]
+                        canvas.draw_polygon(
+                            polygon, 0, 
+                            self.arrow_color, 
+                            self.arrow_color
+                            )
             
         if not (self.draw_policy or self.draw_agent_path):
             i, j  = self.player_pos
