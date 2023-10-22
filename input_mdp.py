@@ -292,6 +292,9 @@ class MDPGUI:
             self.board, self.player_pos, self.done_tiles = board_config["board"], board_config["player_pos"], board_config["done_tiles"]
             self.x_pad, self.y_pad, self.l = self.get_pad_l()
             self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
+            m, n = self.board.shape
+            self.w_label.set_text(str(m))
+            self.h_label.set_text(str(n))
         return handler
 
     def set_board_name(self, x):
