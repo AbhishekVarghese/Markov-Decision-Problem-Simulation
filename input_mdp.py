@@ -2,7 +2,9 @@ import random, time
 import numpy as np
 import SimpleGUICS2Pygame.simpleguics2pygame as simplegui 
 import math
-
+import json
+import os
+import copy
 
 
 class DefaultDict(dict):
@@ -36,20 +38,15 @@ class Board:
 
 
 class MDPGUI:
-    def __init__(self, frame, send_board_data_to = None):
+    def __init__(self, frame):
         # first index is along width and second is along height
-
-        if send_board_data_to :
-            self.send_board_data_to = send_board_data_to
-        else :
-            self.call_on_begin = self.stop
         self.frame = frame
 
         self.board = np.zeros((4, 4))
         self.done_tiles = []
         self.player_pos = (2, 0)
         m, n = self.board.shape
-        self.transition_prob = 0.8
+        self.transition_prob = 1.0
 
         # Board visualisation constants
         self.cmap = {
@@ -62,11 +59,78 @@ class MDPGUI:
         self.grid_color = "blue"
         self.grid_width = 2
         self.draw_mode = 0
+
+        self.current_board_name = "My Board"
+        self.current_board_num = 0
+        self.saved_boards = {
+            self.current_board_name: {
+                "board": self.board,
+                "player_pos": self.player_pos,
+                "done_tiles": self.done_tiles
+            },
+            "maze 1": 
+            {
+                "board": np.array(
+                    [
+                        [0, 0, 0, 0, 0, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, 0, 0, 0, -10, -10, -10, 0, 0, -10, -10, 0, -10, -10, 0, 0, 0, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, -10, 0, -10, -10, 0, 0, 0, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, 0, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, 0, -10, 0, -10, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, 0, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, 0, -10, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, 0, -10, -10, -10, -10, 0, -10, 0, 0, -10, -10, 0, -10, -10, -10, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, -10, -10, -10, 0, 0, -10, -10, 0, -10, -10, 0, -10, 0, 0, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, -10, -10, 0, 0, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, -10, 0, 0, -10, 0, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, -10, -10, -10, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, 0, 0, -10, 0, 0, -10, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, -10, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, 0, 0, 0, 1],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, -10, 0, -10, 0, 0, 0, -10, -10, 0, -10, 0, -10, -10, -10, -10, 0, 0, -10, 0, 0, 0, 0, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, 0, 0, -10, -10, -10, -10, -10, -10, 0, -10, 0, 0, -10, -10, -10, -10, 0, -10, 0, -10, 0, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, -10, 0, -10, -10, -10, 0, -10, -10, 0, 0, 0, -10, -10, 0, 0, 0, -10, 0, -10, -10, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, 0, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, 0, 0, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, 0, 0, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, -10, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, 0, -10, 0, -10, 0, -10, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, -10, 0, -10, -10, 0, -10, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, 0, -10, 0, 0, 0, 0, 0, 0, -10, -10, 0, -10, -10, -10, -10, 0, -10, 0, 0, 0, 0, 0, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, 0, -10, 0, 0, 0, 0, -10, -10, 0, 0, -10, -10, -10, -10, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, 0, 0, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, -10, -10, -10, 0, -10, -10, -10, 0, 0, 0, -10, 0, -10, 0, 0, 0, 0, 0],
+                        [0, 0, 0, 0, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, 0, -10, -10, -10, -10, -10, 0, -10, -10, 0, 0, -10, -10, -10, -10, -10, 0, 0, 0, 0, 0],
+                    ]
+                ),
+                "player_pos": (10, 0),
+                "done_tiles": []
+            }
+        }
+        self.save_board_path = "./saved_boards.json"
+        if os.path.exists(self.save_board_path):
+            with open(self.save_board_path, "r") as f:
+                other_saved_boards = json.load(f)
+            for name in other_saved_boards.keys():
+                other_saved_boards[name]["board"] = np.array(other_saved_boards[name]["board"])
+                if name not in self.saved_boards:
+                    self.saved_boards[name] = other_saved_boards[name]
+                elif name == self.current_board_name:
+                    self.saved_boards[name + " (1)"] = other_saved_boards[name]
+
+        
         
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
+        
+        self.setup_frame()
 
+        
+        # # # print(self.frame.__attr__)
+        # all_fns = dir(self.frame)
+        # fns = [f for f in all_fns if "set" in f]
+        # print(fns)
+        # # print(self.frame.add_input.__doc__)
+        # print(dir(self.w_label))
+        # print(dir(self.frame))
+
+        self.x_pad, self.y_pad, self.l = self.get_pad_l()
+
+    def setup_frame(self):
+        m, n = self.board.shape
         # self.frame.add_label("Set Input Configurations")
         # self.frame.add_label("(Note: You need to press enter after every text input)")
         
@@ -88,38 +152,60 @@ class MDPGUI:
         self.frame.add_button("Draw +1 Reward", self.draw_mode_handler(1), width = 200)
         self.frame.add_button("Draw -1 Reward", self.draw_mode_handler(-1), width = 200)
         self.frame.add_button("Draw Wall", self.draw_mode_handler(-10), width = 200)
-        self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
-        self.frame.add_button("Mark Done Tiles", self.draw_mode_handler("done"), width = 200)
+        # self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
+        self.frame.add_button("Mark Done States", self.draw_mode_handler("done"), width = 200)
         self.frame.add_button("Erase", self.draw_mode_handler(0), width = 200)
 
         self.frame.add_label("\n"*10)
         self.frame.add_button("Set Start Position", self.set_start_pos, width = 200)
 
 
-        self.frame.add_label("\n"*10)
-        self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
-        self.prob.set_text(str(self.transition_prob))
+        # self.frame.add_label("\n"*10)
+        # self.prob = self.frame.add_input("Probability of action execution", self.set_prob, width=100)
+        # self.prob.set_text(str(self.transition_prob))
 
         self.frame.add_label("\n"*10)
-        self.frame.add_button("Begin", self.release_control, width = 200)
+        self.load_board_format = "Load Board: {}"
+        self.load_board_label = self.frame.add_label(self.load_board_format.format(self.current_board_name), width = 200)
+        self.frame.add_button("Next", self.load_board_handler(1), width = 100)
+        self.frame.add_button("Prev", self.load_board_handler(-1), width = 100)
+
+        self.frame.add_label("\n"*10)
+        self.save_board_name = self.frame.add_input("Board Name", self.set_board_name, width=100)
+        self.frame.add_button("Save Board", self.save_board, width = 200)
+        # self.frame.add_button("Reset Saved Boards", self.reset_saved_boards, width = 200)
+
+        self.frame.add_label("\n"*10)
+        self.frame.add_button("Start Value Iteration", self.release_control("value_iteration"), width = 200)
+        self.frame.add_button("Start Q Learning", self.release_control("q_learning"), width = 200)
 
         self.frame.set_mouseclick_handler(self.mouse_handler)
         self.frame.set_mousedrag_handler(self.mouse_handler)
-        # # # print(self.frame.__attr__)
-        # all_fns = dir(self.frame)
-        # fns = [f for f in all_fns if "set" in f]
-        # print(fns)
-        # # print(self.frame.add_input.__doc__)
-        # print(dir(self.w_label))
-        # print(dir(self.frame))
 
-        self.x_pad, self.y_pad, self.l = self.get_pad_l()
+    def take_over(self, board, player_pos):
+        self.setup_frame()
 
-    def release_control(self) :
-        self.draw_mode = None
-        self.frame._controls = []
-        self.frame._draw_controlpanel()
-        self.send_board_data_to(self.board, self.player_pos, self.transition_prob)
+    def set_control_transfer(self, send_control_to):
+        self.send_control_to = send_control_to
+
+
+    def release_control(self, target):
+        def handler():
+            if not hasattr(self, "send_control_to"):
+                return 
+            if type(self.send_control_to) != dict or target not in self.send_control_to:
+                send_fn = self.send_control_to
+            else:
+                send_fn = self.send_control_to[target]
+            self.draw_mode = None
+            self.frame._controls = []
+            self.frame._draw_controlpanel()
+            send_fn(
+                self.board, self.player_pos, 
+                # self.transition_prob
+            )
+        return handler
+
 
     def start(self):
         try:
@@ -188,6 +274,52 @@ class MDPGUI:
             assert m>0 and n>0, "Either width or height has become zero"
             self.update_board(m, n)
         return handler
+
+    def save_curr_board(self):
+        self.saved_boards[self.current_board_name] = {
+            "board": self.board,
+            "player_pos": self.player_pos,
+            "done_tiles": self.done_tiles,
+        }
+
+
+    def load_board_handler(self, delta):
+        def handler():
+            self.save_curr_board()
+            self.current_board_num = (self.current_board_num + delta) % len(list(self.saved_boards.keys()))
+            self.current_board_name = list(self.saved_boards.keys())[self.current_board_num]
+            board_config = self.saved_boards[self.current_board_name]
+            self.board, self.player_pos, self.done_tiles = board_config["board"], board_config["player_pos"], board_config["done_tiles"]
+            self.x_pad, self.y_pad, self.l = self.get_pad_l()
+            self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
+            m, n = self.board.shape
+            self.w_label.set_text(str(m))
+            self.h_label.set_text(str(n))
+        return handler
+
+    def set_board_name(self, x):
+        x = str(x)
+        self.saved_boards = {
+            name if name!= self.current_board_name else x:self.saved_boards[name] 
+            for name in self.saved_boards.keys()
+        }
+        self.current_board_name = x
+        self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
+        
+    def save_board(self):
+        self.save_curr_board()
+        saved_boards_list = copy.deepcopy(self.saved_boards)
+        for b in saved_boards_list:
+            saved_boards_list[b]["board"] = saved_boards_list[b]["board"].tolist()
+        s = json.dumps(saved_boards_list, indent=4)
+        s = s.replace(",\n                ", ", ")
+        s = s.replace("[\n                ", "[")
+        s = s.replace("\n            ]", "]")
+        with open(self.save_board_path, "w") as f:
+            f.write(s)
+
+    def reset_saved_boards(self):
+        os.remove(self.save_board_path)
 
 
     def update_board(self, m, n):
@@ -258,15 +390,15 @@ class MDPGUI:
                     )
                 if (i, j) in self.done_tiles:
                     rect = [
-                        self.ij2xy(i, j+1),
-                        self.ij2xy(i+0.2, j+1),
-                        self.ij2xy(i+0.2, j+0.8),
-                        self.ij2xy(i, j+0.8),
+                        self.ij2xy(i + 0.3, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.7),
+                        self.ij2xy(i + 0.3, j+0.7),
                     ]
                     canvas.draw_polygon(
-                        rect, 1, 
+                        rect, 2, 
                         "white", 
-                        "white"
+                        "rgba(0, 0, 0, 0)"
                     )
 
         i, j,  = self.player_pos
@@ -280,7 +412,7 @@ class MDPGUI:
 
 if __name__ == "__main__" :
     canvas_width = 700
-    canvas_height = 500
+    canvas_height = 600
     frame = simplegui.create_frame("MDP Visualization - Set Input Configurations", canvas_width, canvas_height)
     mdp = MDPGUI(frame)
     mdp.start()

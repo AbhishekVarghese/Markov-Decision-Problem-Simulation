@@ -143,13 +143,38 @@ class Qlearning_with_GUI() :
         self.frame = frame
         self.epsilon = epsilon
         
-    def take_over(self, board, start_pos, transition_prob = 1) :
-        board = Board(board)
+    def take_over(self, board_np, start_pos) :
+        board = Board(board_np)
         self.env = Mdp_env(board,start_pos=start_pos)
         self.agent = Agent((self.env.board_height, self.env.board_width))
         self.start_pos = start_pos
         self.setup_frame()
         self.set_pad_l()
+
+        # For releasing control
+        self.board = board_np
+        self.player_pos = start_pos
+
+    def set_control_transfer(self, send_control_to):
+        self.send_control_to = send_control_to
+
+    def release_control(self, target):
+        def handler():
+            if not hasattr(self, "send_control_to"):
+                return 
+            if type(self.send_control_to) != dict or target not in self.send_control_to:
+                send_fn = self.send_control_to
+            else:
+                send_fn = self.send_control_to[target]
+            if hasattr(self, "timer_play") and self.timer_play.is_running:
+                self.timer_play.stop()
+            self.draw_mode = None
+            self.frame._controls = []
+            self.frame._draw_controlpanel()
+            send_fn(
+                self.board, self.player_pos, 
+            )
+        return handler
         
     def setup_frame(self) :
         # Board visualisation constants
@@ -173,12 +198,17 @@ class Qlearning_with_GUI() :
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
         # Adding GUI elements
-        frame.add_button("reset", self.reset)
-        frame.add_button("Run Sim", self.run_sim)
-        frame.add_button("Stop Sim", self.stop_sim)
-        frame.add_button("Reset", self.reset)
-        frame.set_draw_handler(self.draw_board)
+        self.frame.add_button("reset", self.reset)
+        self.frame.add_button("Run Sim", self.run_sim)
+        self.frame.add_button("Stop Sim", self.stop_sim)
+        self.frame.add_button("Reset", self.reset)
+        self.frame.set_draw_handler(self.draw_board)
         self.timer_play = simplegui.create_timer(1, self.single_step)
+
+        self.frame.add_label("\n"*10)
+
+        self.frame.add_button("Back to input", self.release_control("input"), width = 200)
+        self.frame.add_button("Switch to Value Iteration", self.release_control("value_iteration"), width = 200)
 
 
     def run_sim(self) :
@@ -285,7 +315,9 @@ class Qlearning_with_GUI() :
             self.env.reset()
 
 if __name__ == "__main__" :
-    frame = simplegui.create_frame("Qlearning", 700,500) # There was one more argument, not sure what that is
+    frame = simplegui.create_frame("Qlearning", 700,600) # There was one more argument, not sure what that is
+    inputgui = MDPGUI(frame)
     qlearning_gui = Qlearning_with_GUI(frame)
-    inputgui = MDPGUI(frame, send_board_data_to = qlearning_gui.take_over)
-    inputgui.start()
+    inputgui.set_control_transfer(qlearning_gui.take_over)
+    qlearning_gui.set_control_transfer(inputgui.take_over)
+    frame.start()
