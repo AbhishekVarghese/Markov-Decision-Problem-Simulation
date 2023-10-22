@@ -41,7 +41,8 @@ class ValueIteration():
             )
         return shifted
 
-
+    def reset(self):
+        self.iteration2values = []
 
     def run(self, max_iters, discount, p, reset=False):
         self.max_iters = max_iters
@@ -54,7 +55,7 @@ class ValueIteration():
         values = np.zeros(self.rewards.shape)
 
         if reset:
-            self.iteration2values = []
+            self.reset()
 
         wall_mask = self.rewards == self.wall_reward
 
@@ -159,11 +160,11 @@ class ValueIterationGUI(MDPGUI):
             (1-j, i) for i, j in self.arrow_polygons["right"]
         ]
 
-    def take_over(self, board, start_pos, p=1):
+    def take_over(self, board, player_pos, p=1):
         self.p = p
         self.rewards = board
         self.board = board
-        self.curr_pos = start_pos
+        self.player_pos = player_pos
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
 
         self.d_label = self.frame.add_input("Discount Factor (Gamma)", self.update_discount("set"), width=100)
@@ -194,6 +195,11 @@ class ValueIterationGUI(MDPGUI):
 
         self.frame.add_button("Show Agent Path", self.show_agent_path, width = 100)
 
+        self.frame.add_label("\n"*10)
+
+        self.frame.add_button("Back to input", self.release_control("input"), width = 200)
+        self.frame.add_button("Switch to Q - learning", self.release_control("q_learning"), width = 200)
+
         self.algorithm = ValueIteration(
             self.rewards,
         )
@@ -203,7 +209,26 @@ class ValueIterationGUI(MDPGUI):
         self.draw_status = None
         self.frame.set_draw_handler(self.draw_board)
 
+    def set_control_transfer(self, send_control_to):
+        self.send_control_to = send_control_to
 
+    def release_control(self, target):
+        def handler():
+            if not hasattr(self, "send_control_to"):
+                return 
+            if type(self.send_control_to) != dict or target not in self.send_control_to:
+                send_fn = self.send_control_to
+            else:
+                send_fn = self.send_control_to[target]
+            if hasattr(self, "timer_play") and self.timer_play.is_running:
+                self.timer_play.stop()
+            self.draw_mode = None
+            self.frame._controls = []
+            self.frame._draw_controlpanel()
+            send_fn(
+                self.board, self.player_pos, 
+            )
+        return handler
 
     def update_values(self, iteration=None):
         if iteration is None:
@@ -224,10 +249,7 @@ class ValueIterationGUI(MDPGUI):
 
     def update_policy(self):
         m, n = self.board.shape
-        try:
-            a = self.policy
-        except AttributeError:
-            self.policy = [[0 for _ in range(n)] for _ in range(m)]
+        self.policy = [[0 for _ in range(n)] for _ in range(m)]
         def val_sf(i_, j_, default=self.values.min()-1):
             if (i_ < m and i_ >= 0 and j_ < n and j_ >= 0):
                 val = self.values[i_, j_] 
@@ -252,7 +274,7 @@ class ValueIterationGUI(MDPGUI):
                     self.policy[i][j] = "down"
 
         self.agent_path = []
-        i, j = self.curr_pos
+        i, j = self.player_pos
         self.agent_path.append((i, j))
         transition = {
             "left": (0, -1),
@@ -405,7 +427,7 @@ class ValueIterationGUI(MDPGUI):
                         )
             
         if not (self.draw_policy or self.draw_agent_path):
-            i, j  = self.curr_pos
+            i, j  = self.player_pos
             canvas.draw_circle(
                 self.ij2xy(i+0.5, j+0.5), 
                 self.l//4, 2, 
@@ -422,6 +444,8 @@ class ValueIterationGUI(MDPGUI):
 
 if __name__ == "__main__" :
     frame = simplegui.create_frame("Value Iteration", 700,600)
+    inputgui = MDPGUI(frame)
     value_it_gui = ValueIterationGUI(frame)
-    inputgui = MDPGUI(frame, send_board_data_to=value_it_gui.take_over)
+    inputgui.set_control_transfer(value_it_gui.take_over)
+    value_it_gui.set_control_transfer(inputgui.take_over)
     inputgui.start()

@@ -38,13 +38,8 @@ class Board:
 
 
 class MDPGUI:
-    def __init__(self, frame, send_board_data_to = None):
+    def __init__(self, frame):
         # first index is along width and second is along height
-
-        if send_board_data_to :
-            self.send_board_data_to = send_board_data_to
-        else :
-            self.call_on_begin = self.stop
         self.frame = frame
 
         self.board = np.zeros((4, 4))
@@ -120,7 +115,22 @@ class MDPGUI:
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
+        
+        self.setup_frame()
 
+        
+        # # # print(self.frame.__attr__)
+        # all_fns = dir(self.frame)
+        # fns = [f for f in all_fns if "set" in f]
+        # print(fns)
+        # # print(self.frame.add_input.__doc__)
+        # print(dir(self.w_label))
+        # print(dir(self.frame))
+
+        self.x_pad, self.y_pad, self.l = self.get_pad_l()
+
+    def setup_frame(self):
+        m, n = self.board.shape
         # self.frame.add_label("Set Input Configurations")
         # self.frame.add_label("(Note: You need to press enter after every text input)")
         
@@ -171,25 +181,25 @@ class MDPGUI:
 
         self.frame.set_mouseclick_handler(self.mouse_handler)
         self.frame.set_mousedrag_handler(self.mouse_handler)
-        # # # print(self.frame.__attr__)
-        # all_fns = dir(self.frame)
-        # fns = [f for f in all_fns if "set" in f]
-        # print(fns)
-        # # print(self.frame.add_input.__doc__)
-        # print(dir(self.w_label))
-        # print(dir(self.frame))
 
-        self.x_pad, self.y_pad, self.l = self.get_pad_l()
+    def take_over(self, board, player_pos):
+        self.setup_frame()
 
-    def release_control(self, algorithm):
+    def set_control_transfer(self, send_control_to):
+        self.send_control_to = send_control_to
+
+
+    def release_control(self, target):
         def handler():
+            if not hasattr(self, "send_control_to"):
+                return 
+            if type(self.send_control_to) != dict or target not in self.send_control_to:
+                send_fn = self.send_control_to
+            else:
+                send_fn = self.send_control_to[target]
             self.draw_mode = None
             self.frame._controls = []
             self.frame._draw_controlpanel()
-            if type(self.send_board_data_to) != dict or algorithm not in self.send_board_data_to:
-                send_fn = self.send_board_data_to
-            else:
-                send_fn = self.send_board_data_to[algorithm]
             send_fn(
                 self.board, self.player_pos, 
                 # self.transition_prob
