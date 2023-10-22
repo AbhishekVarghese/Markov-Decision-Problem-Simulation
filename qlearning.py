@@ -169,11 +169,11 @@ class Qlearning_with_GUI() :
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
         # Adding GUI elements
-        frame.add_button("reset", self.reset)
-        frame.add_button("Run Sim", self.run_sim)
-        frame.add_button("Stop Sim", self.stop_sim)
-        frame.add_button("Reset", self.reset)
-        frame.set_draw_handler(self.draw_board)
+        self.frame.add_button("reset", self.reset)
+        self.frame.add_button("Run Sim", self.run_sim)
+        self.frame.add_button("Stop Sim", self.stop_sim)
+        self.frame.add_button("Reset", self.reset)
+        self.frame.set_draw_handler(self.draw_board)
         self.timer_play = simplegui.create_timer(1, self.single_step)
 
 

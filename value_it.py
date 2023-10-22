@@ -159,7 +159,7 @@ class ValueIterationGUI(MDPGUI):
             (1-j, i) for i, j in self.arrow_polygons["right"]
         ]
 
-    def take_over(self, board, start_pos, p):
+    def take_over(self, board, start_pos, p=1):
         self.p = p
         self.rewards = board
         self.board = board

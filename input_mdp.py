@@ -166,7 +166,8 @@ class MDPGUI:
         # self.frame.add_button("Reset Saved Boards", self.reset_saved_boards, width = 200)
 
         self.frame.add_label("\n"*10)
-        self.frame.add_button("Begin", self.release_control, width = 200)
+        self.frame.add_button("Start Value Iteration", self.release_control("value_iteration"), width = 200)
+        self.frame.add_button("Start Q Learning", self.release_control("q_learning"), width = 200)
 
         self.frame.set_mouseclick_handler(self.mouse_handler)
         self.frame.set_mousedrag_handler(self.mouse_handler)
@@ -180,11 +181,21 @@ class MDPGUI:
 
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
 
-    def release_control(self) :
-        self.draw_mode = None
-        self.frame._controls = []
-        self.frame._draw_controlpanel()
-        self.send_board_data_to(self.board, self.player_pos, self.transition_prob)
+    def release_control(self, algorithm):
+        def handler():
+            self.draw_mode = None
+            self.frame._controls = []
+            self.frame._draw_controlpanel()
+            if type(self.send_board_data_to) != dict or algorithm not in self.send_board_data_to:
+                send_fn = self.send_board_data_to
+            else:
+                send_fn = self.send_board_data_to[algorithm]
+            send_fn(
+                self.board, self.player_pos, 
+                # self.transition_prob
+            )
+        return handler
+
 
     def start(self):
         try:
