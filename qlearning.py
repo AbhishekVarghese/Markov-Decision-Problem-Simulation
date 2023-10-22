@@ -145,7 +145,6 @@ class Qlearning_with_GUI() :
         
     def take_over(self, board, start_pos, transition_prob = 1) :
         board = Board(board)
-        print(board.board)
         self.env = Mdp_env(board,start_pos=start_pos)
         self.agent = Agent((self.env.board_height, self.env.board_width))
         self.start_pos = start_pos
@@ -154,13 +153,7 @@ class Qlearning_with_GUI() :
         
     def setup_frame(self) :
         # Board visualisation constants
-        self.cmap = {
-            0: "black",
-            1: "green",
-            -1: "red",
-            -10: "grey",
-            "other": "cyan"
-        }
+        
         self.grid_color = "blue"
         self.grid_width = 2
         self.draw_mode = 0
@@ -168,6 +161,14 @@ class Qlearning_with_GUI() :
         self.cmap_posvval = np.array([39, 166, 39])
         self.cmap_neg_to_pos = self.cmap_posvval - self.cmap_negvval
 
+        self.cmap = {
+            0: "black",
+            1: f"rgb{tuple(self.cmap_posvval)}",
+            -1: f"rgb{tuple(self.cmap_negvval)}",
+            -10: "grey",
+            "other": "cyan"
+        }
+        print(self.cmap)
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
@@ -287,4 +288,4 @@ if __name__ == "__main__" :
     frame = simplegui.create_frame("Qlearning", 700,500) # There was one more argument, not sure what that is
     qlearning_gui = Qlearning_with_GUI(frame)
     inputgui = MDPGUI(frame, send_board_data_to = qlearning_gui.take_over)
-    frame.start()
+    inputgui.start()
