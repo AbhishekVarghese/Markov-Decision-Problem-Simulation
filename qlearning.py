@@ -16,7 +16,6 @@ class Agent :
         self.alpha = alpha #learning rate
         self.gamma = gamma
         self.state_space_shape = state_space_shape
-        print(state_space_shape)
         self.action_to_index = {'left' : 0, 'right' : 1, 'up' : 2, 'down' :3}
         self.reset_agent()
 
@@ -139,14 +138,18 @@ class Mdp_env :
             return preferred_actions
 
 class Qlearning_with_GUI() :
-    def __init__(self, frame, epsilon = 1) :
+    def __init__(self, frame, gamma = 0.9, epsilon = 1, alpha= 0.01) :
         self.frame = frame
         self.epsilon = epsilon
-        
-    def take_over(self, board_np, start_pos) :
+        self.avoid_visited_states = True
+        self.gamma = gamma
+        self.alpha = alpha
+        self.epsilon = epsilon
+
+    def take_over(self, board, start_pos) :
         board = Board(board_np)
         self.env = Mdp_env(board,start_pos=start_pos)
-        self.agent = Agent((self.env.board_height, self.env.board_width))
+        self.agent = Agent((self.env.board_height, self.env.board_width), self.gamma, self.alpha)
         self.start_pos = start_pos
         self.setup_frame()
         self.set_pad_l()
@@ -185,6 +188,9 @@ class Qlearning_with_GUI() :
         self.cmap_negvval = np.array([224, 36, 36])
         self.cmap_posvval = np.array([39, 166, 39])
         self.cmap_neg_to_pos = self.cmap_posvval - self.cmap_negvval
+        self.default_timer_speed = 1000
+        self.speed_mod_factor = 1
+        self.speed_increment = 0.1
 
         self.cmap = {
             0: "black",
@@ -193,29 +199,96 @@ class Qlearning_with_GUI() :
             -10: "grey",
             "other": "cyan"
         }
-        print(self.cmap)
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
+
+        #Setting up timers
+        self.timer_play = simplegui.create_timer(self.default_timer_speed, self.single_step)
+
         # Adding GUI elements
+        self.gamma_label = self.frame.add_input("Discount Factor (Gamma)", self.update_gamma, width=100)
+        self.gamma_label.set_text(str(self.gamma))
+        self.epsilon_label = self.frame.add_input("Exploration Rate (Epsilon)", self.update_epsilon, width=100)
+        self.epsilon_label.set_text(str(self.epsilon))
+        self.alpha_label = self.frame.add_input("Learning Rate (Alpha)", self.update_alpha, width=100)
+        self.alpha_label.set_text(str(self.alpha))
+        self.frame.add_label("\n"*6)
         self.frame.add_button("reset", self.reset)
         self.frame.add_button("Run Sim", self.run_sim)
         self.frame.add_button("Stop Sim", self.stop_sim)
         self.frame.add_button("Reset", self.reset)
-        self.frame.set_draw_handler(self.draw_board)
-        self.timer_play = simplegui.create_timer(1, self.single_step)
 
+        self.button_avoid_visited_states = self.frame.add_button(f"Try avoid visited \n \n states in this \n\nepisode : {self.avoid_visited_states}", self.flip_avoid_states)
+        self.frame.add_label("\n"*6)
+        self.speed_label = self.frame.add_input("Speed", self.update_speed("set"), width=100)
+        self.speed_label.set_text(str(self.speed_mod_factor))
+        self.frame.add_button("+", self.update_speed("+"), width = 100)
+        self.frame.add_button("--", self.update_speed("-"), width = 100)
+        self.animation_freq_display_label = self.frame.add_label(f"Taking action every {self.timer_play._interval*100//100/1000}s")
+
+        self.frame.set_draw_handler(self.draw_board)
+        
         self.frame.add_label("\n"*10)
 
         self.frame.add_button("Back to input", self.release_control("input"), width = 200)
         self.frame.add_button("Switch to Value Iteration", self.release_control("value_iteration"), width = 200)
 
+    def flip_avoid_states(self) :
+        self.avoid_visited_states = not self.avoid_visited_states
+        self.button_avoid_visited_states.set_text(f"Try Avoid Visited states : {self.avoid_visited_states}")
+    
+    def update_gamma(self,gamma) :
+        gamma = float(gamma)
+        if  0 <= gamma <= 1 :
+            self.gamma = gamma
+        print("Changed gamma to", self.epsilon)
+        self.gamma_label.set_text(str(self.gamma))
+
+    def update_epsilon(self,epsilon) :
+        epsilon = float(epsilon)
+        if  0 <= epsilon <= 1 :
+            self.epsilon = epsilon
+        print("Changed epsilon to", self.epsilon)
+        self.epsilon_label.set_text(str(self.epsilon))
+
+    def update_alpha(self,alpha) :
+        if 0 <= alpha :
+            self.alpha = alpha
+        print("Changed alpha to", alpha)
+        self.alpha_label.set_text(str(self.alpha))
 
     def run_sim(self) :
         self.timer_play.start()
     def stop_sim(self) :
         self.timer_play.stop()
 
+    def update_speed(self, mode):
+        def common(x):
+            assert (x > 0), "Error: Animation Frequency Modifier has to be >=0"
+            self.speed_mod_factor = x
+            self.speed_label.set_text("{:.3f}".format(self.speed_mod_factor))
+            print("Setting Animation frequency to", self.default_timer_speed/self.speed_mod_factor)
+            self.timer_play._interval = self.default_timer_speed/self.speed_mod_factor
+            self.animation_freq_display_label.set_text(f"Taking action every {self.timer_play._interval*100//100/1000}s")
+
+
+
+        if mode == "set":
+            def handler(x):
+                x = float(x)
+                common(x)
+            return handler
+        elif mode == "+" or mode == "-":
+            delta = self.speed_increment if mode == "+" else -self.speed_increment
+            def handler():
+                print(self.speed_mod_factor, delta, self.speed_mod_factor + delta)
+                x = self.speed_mod_factor + delta
+                if x > 0.0000000001 :
+                    print("Changed Speed Modifier to",x)
+                    common(x)
+            return handler
+        
     def draw_board(self, canvas):
         Qest = self.agent.estQ
         Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
@@ -233,7 +306,6 @@ class Qlearning_with_GUI() :
                 if color == "black" :
                     t = cmap[i,j]
                     curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                    print(curr_color)
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 

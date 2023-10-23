@@ -20,28 +20,26 @@ class DefaultDict(dict):
             return self.default_factory()
 
 class Board:
-    def __init__(self, board):
+    def __init__(self, board, done_tiles):
         self.board = board
         self.height = board.shape[0]
         self.width = board.shape[1]
+        self.shape = board.shape
         self.reward_dict = DefaultDict(lambda : 0)
-        self.done_tiles = []
+        self.done_tiles = done_tiles
         self.blocked_tiles = []
         for i in range(self.height) :
             for j in range(self.width) :
                 if not board[i][j] in (0,-10):
                     self.reward_dict[(i,j)] = board[i][j]
-                    self.done_tiles.append((i,j))
                 elif board[i][j] == -10 :
                     self.blocked_tiles.append((i,j))
-
 
 
 class MDPGUI:
     def __init__(self, frame):
         # first index is along width and second is along height
         self.frame = frame
-
         self.board = np.zeros((4, 4))
         self.done_tiles = []
         self.player_pos = (2, 0)
@@ -201,7 +199,7 @@ class MDPGUI:
             self.frame._controls = []
             self.frame._draw_controlpanel()
             send_fn(
-                self.board, self.player_pos, 
+                Board(self.board,self.done_tiles), self.player_pos, 
                 # self.transition_prob
             )
         return handler
