@@ -12,10 +12,11 @@ def sigmoid(z):
     return 1/(1 + np.exp(-z))
 
 class Agent :
-    def __init__(self, state_space_shape, gamma = 0.9,  alpha = 0.1) :
+    def __init__(self, state_space_shape, gamma = 0.9,  alpha = 0.1, epsilon = 1) :
         self.alpha = alpha #learning rate
         self.gamma = gamma
         self.state_space_shape = state_space_shape
+        self.epsilon = epsilon
         self.action_to_index = {'left' : 0, 'right' : 1, 'up' : 2, 'down' :3}
         self.reset_agent()
 
@@ -27,14 +28,14 @@ class Agent :
     def board(self) :
         return self.estQ
     
-    def select_action( self, state, available_actions, epsilon = 1) :
+    def select_action( self, state, available_actions) :
         toss = random.uniform(0,1)
         qvalues = []
         for action in available_actions :
             action_idx = self.action_to_index[action]
             qvalues.append(self.estQ[state[0], state[1], action_idx])
 
-        if toss < epsilon :
+        if toss < self.epsilon :
             # We would like to explore more with higher value of epsilon
             return np.random.choice(available_actions)
         else :
@@ -47,6 +48,7 @@ class Agent :
         Qlhs = (1 - self.alpha)* self.estQ[ state[0], state[1],action]
         Qrhs = self.alpha * ( reward + self.gamma * np.max(self.estQ[ new_state[0], new_state[1], : ]))
         self.estQ[state[0], state[1],action] = Qlhs + Qrhs
+
     
 
 class Mdp_env :
@@ -141,21 +143,24 @@ class Qlearning_with_GUI() :
     def __init__(self, frame, gamma = 0.9, epsilon = 1, alpha= 0.01) :
         self.frame = frame
         self.epsilon = epsilon
-        self.avoid_visited_states = True
+        self.avoid_visited_states = False
         self.gamma = gamma
         self.alpha = alpha
         self.epsilon = epsilon
+        self.just_done = False
+
+        #Prevent Concurrency issues i.e. Functions are called faster than they can finish using the timer
+        self.single_step_running = False
 
     def take_over(self, board, start_pos) :
-        board = Board(board_np)
+        self.board = board
         self.env = Mdp_env(board,start_pos=start_pos)
-        self.agent = Agent((self.env.board_height, self.env.board_width), self.gamma, self.alpha)
+        self.agent = Agent((self.env.board_height, self.env.board_width), self.gamma, self.alpha, self.epsilon)
         self.start_pos = start_pos
         self.setup_frame()
         self.set_pad_l()
 
         # For releasing control
-        self.board = board_np
         self.player_pos = start_pos
 
     def set_control_transfer(self, send_control_to):
@@ -214,12 +219,11 @@ class Qlearning_with_GUI() :
         self.alpha_label = self.frame.add_input("Learning Rate (Alpha)", self.update_alpha, width=100)
         self.alpha_label.set_text(str(self.alpha))
         self.frame.add_label("\n"*6)
-        self.frame.add_button("reset", self.reset)
         self.frame.add_button("Run Sim", self.run_sim)
         self.frame.add_button("Stop Sim", self.stop_sim)
         self.frame.add_button("Reset", self.reset)
 
-        self.button_avoid_visited_states = self.frame.add_button(f"Try avoid visited \n \n states in this \n\nepisode : {self.avoid_visited_states}", self.flip_avoid_states)
+        self.button_avoid_visited_states = self.frame.add_button(f"Try avoid visited states in this episode : {self.avoid_visited_states}", self.flip_avoid_states)
         self.frame.add_label("\n"*6)
         self.speed_label = self.frame.add_input("Speed", self.update_speed("set"), width=100)
         self.speed_label.set_text(str(self.speed_mod_factor))
@@ -236,12 +240,13 @@ class Qlearning_with_GUI() :
 
     def flip_avoid_states(self) :
         self.avoid_visited_states = not self.avoid_visited_states
-        self.button_avoid_visited_states.set_text(f"Try Avoid Visited states : {self.avoid_visited_states}")
+        self.button_avoid_visited_states.set_text(f"Try avoid visited states in this episode : {self.avoid_visited_states}")
     
     def update_gamma(self,gamma) :
         gamma = float(gamma)
         if  0 <= gamma <= 1 :
             self.gamma = gamma
+            self.agent.gamma = gamma
         print("Changed gamma to", self.epsilon)
         self.gamma_label.set_text(str(self.gamma))
 
@@ -249,12 +254,15 @@ class Qlearning_with_GUI() :
         epsilon = float(epsilon)
         if  0 <= epsilon <= 1 :
             self.epsilon = epsilon
+            self.agent.epsilon = epsilon
         print("Changed epsilon to", self.epsilon)
         self.epsilon_label.set_text(str(self.epsilon))
 
     def update_alpha(self,alpha) :
+        alpha = float(alpha)
         if 0 <= alpha :
             self.alpha = alpha
+            self.agent.alpha = alpha
         print("Changed alpha to", alpha)
         self.alpha_label.set_text(str(self.alpha))
 
@@ -291,9 +299,10 @@ class Qlearning_with_GUI() :
         
     def draw_board(self, canvas):
         Qest = self.agent.estQ
-        Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
-        cmap = np.tanh(np.pi*Vest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
-        num_squares_along_height, num_squares_along_width = Vest.shape
+        # Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
+        Vstarest = np.max(Qest,axis = -1 )
+        cmap = np.tanh(np.pi*Vstarest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
+        num_squares_along_height, num_squares_along_width = Vstarest.shape
         for i in range(num_squares_along_height):
             for j in range(num_squares_along_width):
                 rect = [
@@ -312,7 +321,7 @@ class Qlearning_with_GUI() :
                         curr_color
                     )
                     canvas.draw_text(
-                        "%.2f"% Vest[i,j],
+                        "%.5f"% Vstarest[i,j],
                         self.ij2xy(i+0.5, j+0.5),
                         font_size=12,
                         font_color="white"
@@ -372,19 +381,31 @@ class Qlearning_with_GUI() :
         self.env.reset()
     
     def single_step(self) :
-        available_actions = self.env.get_legal_actions()
-        if len(available_actions) == 0 :
-            raise("No actions available")
+        if self.single_step_running : #prevent concurrency issues where timer calls faster than the runtime of the function
             return
         
-        action = self.agent.select_action(self.env.curr_pos, available_actions, self.epsilon)
+        self.single_step_running = True
+        if self.just_done : # Skips one frame so that we can see the agent hit the done state
+            self.just_done = False
+            self.env.reset()
+            self.single_step_running = False
+            return
+
+        available_actions = self.env.get_legal_actions()
+        if len(available_actions) == 0 :
+            raise("No actions available, the agent is blocked from all sides. Reconfigure the MDP environment")
+            return
+        
+        action = self.agent.select_action(self.env.curr_pos, available_actions)
         curr_state = self.env.curr_pos
         next_state, reward, done = self.env.step(action)
         self.agent.update_state(curr_state,action,next_state,reward)
 
         if done :
-            # time.sleep(1)
-            self.env.reset()
+            self.just_done = True
+
+        self.single_step_running = False
+            
 
 if __name__ == "__main__" :
     frame = simplegui.create_frame("Qlearning", 700,600) # There was one more argument, not sure what that is
