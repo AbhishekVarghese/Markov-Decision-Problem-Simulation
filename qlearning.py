@@ -23,6 +23,7 @@ class Agent :
     def reset_agent(self) :
         # self.estQ = np.random.random(size = self.state_space_shape + (4,) ) - 0.5 # The last indice stores action
         self.estQ = np.zeros(shape = self.state_space_shape + (4,)  )
+        self.estV = np.zeros(shape = self.state_space_shape)
 
     @property
     def board(self) :
@@ -42,12 +43,17 @@ class Agent :
             return available_actions[np.argmax(qvalues)]
     
 
-    def update_state(self, state, action, new_state, reward) :
+    def update_state(self, state, action, new_state, reward, legal_actions) :
         # Q = (1 - alpha)*Q(st,at) + alpha(rt + gamma * max_a Q(st+1, a))
         action = self.action_to_index[action]
         Qlhs = (1 - self.alpha)* self.estQ[ state[0], state[1],action]
         Qrhs = self.alpha * ( reward + self.gamma * np.max(self.estQ[ new_state[0], new_state[1], : ]))
         self.estQ[state[0], state[1],action] = Qlhs + Qrhs
+
+        #Compute accurate V_epsilon
+        legal_actions_idx = [self.action_to_index[i] for i in legal_actions]
+        curr_state_Qvalues = self.estQ[state[0],state[1],legal_actions_idx]
+        self.estV[state[0],state[1]] = (1-self.epsilon)*np.max(curr_state_Qvalues) + self.epsilon*np.sum(curr_state_Qvalues)/len(legal_actions_idx)
 
     
 
@@ -134,10 +140,8 @@ class Mdp_env :
             if not (self.curr_pos[0] + 1, self.curr_pos[1]) in self.visited_tiles :
                 preferred_actions.append('down')
         
-        if len(preferred_actions) == 0 :
-            return legal_actions
-        else :
-            return preferred_actions
+        return legal_actions,preferred_actions
+
 
 class Qlearning_with_GUI() :
     def __init__(self, frame, gamma = 0.9, epsilon = 1, alpha= 0.01) :
@@ -147,7 +151,10 @@ class Qlearning_with_GUI() :
         self.gamma = gamma
         self.alpha = alpha
         self.epsilon = epsilon
+        self.max_T_in_str = ""
         self.just_done = False
+        self.show_Vepsilon_text = True
+
 
         #Prevent Concurrency issues i.e. Functions are called faster than they can finish using the timer
         self.single_step_running = False
@@ -157,6 +164,7 @@ class Qlearning_with_GUI() :
         self.env = Mdp_env(board,start_pos=start_pos)
         self.agent = Agent((self.env.board_height, self.env.board_width), self.gamma, self.alpha, self.epsilon)
         self.start_pos = start_pos
+        self.curr_T = 0
         self.setup_frame()
         self.set_pad_l()
 
@@ -218,6 +226,8 @@ class Qlearning_with_GUI() :
         self.epsilon_label.set_text(str(self.epsilon))
         self.alpha_label = self.frame.add_input("Learning Rate (Alpha)", self.update_alpha, width=100)
         self.alpha_label.set_text(str(self.alpha))
+        self.T_label = self.frame.add_input("Max time steps (T)", self.update_T, width=100)
+        self.T_label.set_text(self.max_T_in_str)
         self.frame.add_label("\n"*6)
         self.frame.add_button("Run Sim", self.run_sim)
         self.frame.add_button("Stop Sim", self.stop_sim)
@@ -230,6 +240,7 @@ class Qlearning_with_GUI() :
         self.frame.add_button("+", self.update_speed("+"), width = 100)
         self.frame.add_button("--", self.update_speed("-"), width = 100)
         self.animation_freq_display_label = self.frame.add_label(f"Taking action every {self.timer_play._interval*100//100/1000}s")
+        self.show_text_button = self.frame.add_button(f"Show V_epsilon text : {self.show_Vepsilon_text}", self.flip_show_text)
 
         self.frame.set_draw_handler(self.draw_board)
         
@@ -240,8 +251,19 @@ class Qlearning_with_GUI() :
 
     def flip_avoid_states(self) :
         self.avoid_visited_states = not self.avoid_visited_states
-        self.button_avoid_visited_states.set_text(f"Try avoid visited states in this episode : {self.avoid_visited_states}")
-    
+        self.show_text_button.set_text(f"Try avoid visited states in this episode : {self.avoid_visited_states}")
+
+    def flip_show_text(self) :
+        self.show_Vepsilon_text = not self.show_Vepsilon_text
+        self.button_avoid_visited_states.set_text(f"Show V_epsilon text : {self.show_Vepsilon_text}")
+
+
+    def update_T(self,T) :
+        if T.isalpha() :
+            self.max_T_in_str = str(int(T))
+        self.T_label.set_text(self.max_T_in_str)
+
+
     def update_gamma(self,gamma) :
         gamma = float(gamma)
         if  0 <= gamma <= 1 :
@@ -298,9 +320,8 @@ class Qlearning_with_GUI() :
             return handler
         
     def draw_board(self, canvas):
-        Qest = self.agent.estQ
         # Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
-        Vstarest = np.max(Qest,axis = -1 )
+        Vstarest = self.agent.estV
         cmap = np.tanh(np.pi*Vstarest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
         num_squares_along_height, num_squares_along_width = Vstarest.shape
         for i in range(num_squares_along_height):
@@ -320,12 +341,13 @@ class Qlearning_with_GUI() :
                         self.grid_color, 
                         curr_color
                     )
-                    canvas.draw_text(
-                        "%.5f"% Vstarest[i,j],
-                        self.ij2xy(i+0.5, j+0.5),
-                        font_size=12,
-                        font_color="white"
-                    )
+                    if self.show_Vepsilon_text :
+                        canvas.draw_text(
+                            "%.5f"% Vstarest[i,j],
+                            self.ij2xy(i+0.5, j+0.5),
+                            font_size=12,
+                            font_color="white"
+                        )
                 elif color == self.cmap["other"]:
                     canvas.draw_text(
                         str(int(self.env.board[i, j])),
@@ -338,6 +360,19 @@ class Qlearning_with_GUI() :
                         rect, self.grid_width, 
                         self.grid_color, 
                         color
+                    )
+
+                if (i, j) in self.board.done_tiles:
+                    rect = [
+                        self.ij2xy(i + 0.3, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.7),
+                        self.ij2xy(i + 0.3, j+0.7),
+                    ]
+                    canvas.draw_polygon(
+                        rect, 2, 
+                        "white", 
+                        "rgba(0, 0, 0, 0)"
                     )
         i, j  = self.env.curr_pos
         canvas.draw_circle(
@@ -381,25 +416,34 @@ class Qlearning_with_GUI() :
         self.env.reset()
     
     def single_step(self) :
-        if self.single_step_running : #prevent concurrency issues where timer calls faster than the runtime of the function
+        if self.single_step_running : #prevent concurrency issues where timer calls are faster than the runtime of the function
             return
-        
         self.single_step_running = True
+        
         if self.just_done : # Skips one frame so that we can see the agent hit the done state
             self.just_done = False
             self.env.reset()
             self.single_step_running = False
             return
 
-        available_actions = self.env.get_legal_actions()
-        if len(available_actions) == 0 :
+        legal_actions, preferred_actions = self.env.get_legal_actions()
+        if len(legal_actions) == 0 :
             raise("No actions available, the agent is blocked from all sides. Reconfigure the MDP environment")
             return
+        
+        if len(preferred_actions) != 0 and self.avoid_visited_states :
+            available_actions = preferred_actions
+        else :
+            available_actions = legal_actions
         
         action = self.agent.select_action(self.env.curr_pos, available_actions)
         curr_state = self.env.curr_pos
         next_state, reward, done = self.env.step(action)
-        self.agent.update_state(curr_state,action,next_state,reward)
+        self.agent.update_state(curr_state,action,next_state,reward, legal_actions)
+
+        self.curr_T += 1
+        if self.max_T_in_str != "" and self.curr_T == int(self.max_T_in_str) :
+            done = True
 
         if done :
             self.just_done = True
