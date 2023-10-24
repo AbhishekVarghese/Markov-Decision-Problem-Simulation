@@ -288,6 +288,7 @@ class MDPGUI:
             self.current_board_name = list(self.saved_boards.keys())[self.current_board_num]
             board_config = self.saved_boards[self.current_board_name]
             self.board, self.player_pos, self.done_tiles = board_config["board"], board_config["player_pos"], board_config["done_tiles"]
+            self.done_tiles = [tuple(t) for t in self.done_tiles]
             self.x_pad, self.y_pad, self.l = self.get_pad_l()
             self.load_board_label.set_text(self.load_board_format.format(self.current_board_name)) 
             m, n = self.board.shape
