@@ -136,6 +136,7 @@ class ValueIterationGUI(MDPGUI):
 
         self.draw_policy = False
         self.draw_agent_path = False
+        self.draw_values = False
         self.agent_path = []
 
         self.arrow_color = "rgb(255, 255, 255)"
@@ -198,6 +199,10 @@ class ValueIterationGUI(MDPGUI):
         self.frame.add_label("\n"*10)
 
         self.frame.add_button("Show Agent Path", self.show_agent_path, width = 100)
+
+        self.frame.add_label("\n"*10)
+
+        self.frame.add_button("Show Values", self.show_values, width = 100)
 
         self.frame.add_label("\n"*10)
 
@@ -385,6 +390,9 @@ class ValueIterationGUI(MDPGUI):
     def show_agent_path(self):
         self.draw_agent_path = not self.draw_agent_path
 
+    def show_values(self):
+        self.draw_values = not self.draw_values
+
     def value2color(self, val, max_val, min_val):
         self.cmap_negvval = np.array([170,0,0])
         self.cmap_posvval = np.array([0,150,0])
@@ -445,7 +453,14 @@ class ValueIterationGUI(MDPGUI):
                             self.arrow_color, 
                             self.arrow_color
                             )
-            
+                if self.draw_values:
+                    canvas.draw_text(
+                            "{:.3f}".format(self.values[i, j]),
+                            self.ij2xy(i+0.5, j+0.5),
+                            font_size=20,
+                            font_color="white"
+                        )
+
         if not (self.draw_policy or self.draw_agent_path):
             i, j  = self.player_pos
             canvas.draw_circle(
