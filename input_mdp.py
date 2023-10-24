@@ -169,7 +169,7 @@ class MDPGUI:
         self.frame.add_button("Prev", self.load_board_handler(-1), width = 100)
 
         self.save_board_name = self.frame.add_input("Board Name", self.set_board_name, width=100)
-        self.frame.add_button("Save Board", self.save_board, width = 200)
+        self.frame.add_button("Save All Boards", self.save_board, width = 200)
         self.frame.add_button("Delete Board", self.delete_board, width = 200)
         self.frame.add_button("New Board", self.new_board, width = 200)
         # self.frame.add_button("Reset Saved Boards", self.reset_saved_boards, width = 200)
@@ -300,6 +300,8 @@ class MDPGUI:
 
     def set_board_name(self, x):
         x = str(x)
+        while x in self.saved_boards.keys():
+            x = x + " (1)"
         self.saved_boards = {
             name if name!= self.current_board_name else x:self.saved_boards[name] 
             for name in self.saved_boards.keys()
