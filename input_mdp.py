@@ -168,9 +168,10 @@ class MDPGUI:
         self.frame.add_button("Next", self.load_board_handler(1), width = 100)
         self.frame.add_button("Prev", self.load_board_handler(-1), width = 100)
 
-        self.frame.add_label("\n"*10)
         self.save_board_name = self.frame.add_input("Board Name", self.set_board_name, width=100)
         self.frame.add_button("Save Board", self.save_board, width = 200)
+        self.frame.add_button("Delete Board", self.delete_board, width = 200)
+        self.frame.add_button("New Board", self.new_board, width = 200)
         # self.frame.add_button("Reset Saved Boards", self.reset_saved_boards, width = 200)
 
         self.frame.add_label("\n"*10)
@@ -281,9 +282,10 @@ class MDPGUI:
         }
 
 
-    def load_board_handler(self, delta):
+    def load_board_handler(self, delta, save_curr=True):
         def handler():
-            self.save_curr_board()
+            if save_curr:
+                self.save_curr_board()
             self.current_board_num = (self.current_board_num + delta) % len(list(self.saved_boards.keys()))
             self.current_board_name = list(self.saved_boards.keys())[self.current_board_num]
             board_config = self.saved_boards[self.current_board_name]
@@ -316,6 +318,27 @@ class MDPGUI:
         s = s.replace("\n            ]", "]")
         with open(self.save_board_path, "w") as f:
             f.write(s)
+
+    def delete_board(self):
+        self.saved_boards = {
+            k:v for k, v in self.saved_boards.items()
+            if k != self.current_board_name
+        }
+        self.load_board_handler(delta=0, save_curr=False)()
+
+    def new_board(self):
+        new_board = {
+            "board": np.zeros((4, 4)),
+            "done_tiles": [],
+            "player_pos": (2, 0),
+        }
+        new_board_name = "New Board"
+        while new_board_name in self.saved_boards.keys():
+            new_board_name = new_board_name + " (1)"
+        self.saved_boards[new_board_name] = new_board
+        self.current_board_num = len(list(self.saved_boards.keys())) - 1
+        self.load_board_handler(delta=0, save_curr=True)()
+
 
     def reset_saved_boards(self):
         os.remove(self.save_board_path)
