@@ -235,13 +235,12 @@ class ValueIterationGUI(MDPGUI):
                 send_fn = self.send_control_to
             else:
                 send_fn = self.send_control_to[target]
-            if hasattr(self, "timer_play") and self.timer_play.is_running:
-                self.timer_play.stop()
+            self.stop_timer()
             self.draw_mode = None
             self.frame._controls = []
             self.frame._draw_controlpanel()
             send_fn(
-                self.board, self.player_pos, 
+                Board(self.board,self.done_tiles), self.player_pos, 
             )
         return handler
 
@@ -294,6 +293,7 @@ class ValueIterationGUI(MDPGUI):
 
     def update_discount(self, mode):
         def common(x):
+            self.stop_timer()
             assert (x >= 0) and (x <= 1), "Error: Discount going out of bounds"
             self.discount = x
             self.d_label.set_text("{:.3f}".format(self.discount))
@@ -318,6 +318,7 @@ class ValueIterationGUI(MDPGUI):
 
     def update_iteration(self, mode):
         def common(x):
+            self.stop_timer()
             assert (x >= 0), "Error: Iteration has to be >=0"
             self.iteration = x
             self.it_label.set_text(str(self.iteration))
@@ -363,6 +364,11 @@ class ValueIterationGUI(MDPGUI):
                 x = self.timer_speed + delta
                 common(x)
             return handler
+
+    def stop_timer(self):
+        if hasattr(self, "timer_play") and self.timer_play.is_running:
+            self.timer_play.stop()
+        self.draw_status = None
 
 
     def value_it_step(self):
