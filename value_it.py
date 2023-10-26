@@ -8,8 +8,10 @@ import math
 import time
 
 class ValueIteration():
-    def __init__(self, rewards, wall_reward=-10):
+    def __init__(self, rewards, done_tiles, wall_reward=-10):
         self.rewards = rewards
+        self.done_tiles = done_tiles
+        
         self.wall_reward = wall_reward
         self.iteration2values = []
         self.current_iter = 0
@@ -83,6 +85,10 @@ class ValueIteration():
                 di: rewards_shifted[di] + discount * prev_shifted[di]
                 for di in directions
             }
+            for di in proposals.keys():
+                for tile in self.done_tiles:
+                    i, j = tile
+                    proposals[di][i, j] = self.rewards[i, j] + discount * prev_values[i, j]
 
             new_values = [
                 np.sum(np.stack([
@@ -212,7 +218,7 @@ class ValueIterationGUI(MDPGUI):
         self.frame.add_button("Switch to Q - learning", self.release_control("q_learning"), width = 200)
 
         self.algorithm = ValueIteration(
-            self.rewards,
+            self.rewards, self.done_tiles
         )
         self.algorithm.run(self.iteration, self.discount, self.p)
         self.update_values()
@@ -231,13 +237,12 @@ class ValueIterationGUI(MDPGUI):
                 send_fn = self.send_control_to
             else:
                 send_fn = self.send_control_to[target]
-            if hasattr(self, "timer_play") and self.timer_play.is_running:
-                self.timer_play.stop()
+            self.stop_timer()
             self.draw_mode = None
             self.frame._controls = []
             self.frame._draw_controlpanel()
             send_fn(
-                self.board, self.player_pos, 
+                Board(self.board,self.done_tiles), self.player_pos, 
             )
         return handler
 
@@ -273,7 +278,7 @@ class ValueIterationGUI(MDPGUI):
                 stay = self.values[i, j]
                 r, l, u, d = val_sf(i, j+1), val_sf(i, j-1), val_sf(i-1, j), val_sf(i+1, j)
                 max_val = max(stay, l, r, u, d)
-                if max_val == stay:
+                if (max_val == stay and max_val not in [l, r, u, d]) or (i, j) in self.done_tiles:
                     self.policy[i][j] = "stay"
                 elif max_val == l:
                     self.policy[i][j] = "left"
@@ -285,31 +290,21 @@ class ValueIterationGUI(MDPGUI):
                     self.policy[i][j] = "down"
 
         self.agent_path = []
-        i, j = self.player_pos
-        self.agent_path.append((i, j))
-        transition = {
-            "left": (0, -1),
-            "right": (0, 1),
-            "up": (-1, 0),
-            "down": (1, 0),
-        }
-        while self.policy[i][j] != "stay":
-            di, dj = transition[self.policy[i][j]]
-            i += di
-            j += dj
-            self.agent_path.append((i, j))
-
-
-
+        self.draw_agent_path = False
 
 
     def update_discount(self, mode):
         def common(x):
+            self.stop_timer()
             assert (x >= 0) and (x <= 1), "Error: Discount going out of bounds"
             self.discount = x
             self.d_label.set_text("{:.3f}".format(self.discount))
             self.algorithm.run(self.iteration, self.discount, self.p, reset=True)
+            draw_agent_path = self.draw_agent_path
             self.update_values()
+            if draw_agent_path:
+                self.show_agent_path()
+                
 
         if mode == "set":
             def handler(x):
@@ -325,13 +320,17 @@ class ValueIterationGUI(MDPGUI):
 
     def update_iteration(self, mode):
         def common(x):
+            self.stop_timer()
             assert (x >= 0), "Error: Iteration has to be >=0"
             self.iteration = x
             self.it_label.set_text(str(self.iteration))
             if self.iteration > self.algorithm.max_iters:
                 new_max_iter = (self.iteration//self.maxiter_increment + 1) * self.maxiter_increment
                 self.algorithm.run(new_max_iter, self.discount, self.p)
+            draw_agent_path = self.draw_agent_path
             self.update_values()
+            if draw_agent_path:
+                self.show_agent_path()
 
         if mode == "set":
             def handler(x):
@@ -368,6 +367,11 @@ class ValueIterationGUI(MDPGUI):
                 common(x)
             return handler
 
+    def stop_timer(self):
+        if hasattr(self, "timer_play") and self.timer_play.is_running:
+            self.timer_play.stop()
+        self.draw_status = None
+
 
     def value_it_step(self):
         if self.intermediate_iter > self.iteration:
@@ -391,6 +395,24 @@ class ValueIterationGUI(MDPGUI):
 
     def show_agent_path(self):
         self.draw_agent_path = not self.draw_agent_path
+        if self.draw_agent_path:
+            self.agent_path = []
+            i, j = self.player_pos
+            self.agent_path.append((i, j))
+            transition = {
+                "left": (0, -1),
+                "right": (0, 1),
+                "up": (-1, 0),
+                "down": (1, 0),
+            }
+            m, n = self.board.shape
+            steps = m*n+1
+            while self.policy[i][j] != "stay" and steps > 0:
+                di, dj = transition[self.policy[i][j]]
+                i += di
+                j += dj
+                self.agent_path.append((i, j))
+                steps -= 1
 
     def show_values(self):
         self.draw_values = not self.draw_values
@@ -453,6 +475,18 @@ class ValueIterationGUI(MDPGUI):
                             self.arrow_color, 
                             self.arrow_color
                             )
+                if (i, j) in self.done_tiles:
+                    rect = [
+                        self.ij2xy(i + 0.3, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.3),
+                        self.ij2xy(i + 0.7, j+0.7),
+                        self.ij2xy(i + 0.3, j+0.7),
+                    ]
+                    canvas.draw_polygon(
+                        rect, 2, 
+                        "white", 
+                        "rgba(0, 0, 0, 0)"
+                    )
                 if self.draw_values:
                     canvas.draw_text(
                             "{:.3f}".format(self.values[i, j]),
