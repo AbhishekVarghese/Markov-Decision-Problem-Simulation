@@ -121,10 +121,12 @@ class ValueIterationGUI(MDPGUI):
         self.speed_increment = 0.1
         self.timer_multiplier = 50
 
+        self.cmap_negvval = np.array([170,0,0])
+        self.cmap_posvval = np.array([0,150,0])
         self.cmap = {
             0: "black",
-            1: "green",
-            -1: "red",
+            1: f"rgb{tuple(self.cmap_posvval)}",
+            -1: f"rgb{tuple(self.cmap_negvval)}",
             -10: "grey",
             "other": "cyan"
         }
@@ -394,8 +396,6 @@ class ValueIterationGUI(MDPGUI):
         self.draw_values = not self.draw_values
 
     def value2color(self, val, max_val, min_val):
-        self.cmap_negvval = np.array([170,0,0])
-        self.cmap_posvval = np.array([0,150,0])
         if val < 0:
             color = abs(val)/abs(min_val+1e-10) * self.cmap_negvval
         else:

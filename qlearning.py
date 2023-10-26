@@ -259,8 +259,10 @@ class Qlearning_with_GUI() :
 
 
     def update_T(self,T) :
-        if T.isalpha() :
+        if T.isdigit() :
             self.max_T_in_str = str(int(T))
+        else :
+            self.max_T_in_str = ""
         self.T_label.set_text(self.max_T_in_str)
 
 
