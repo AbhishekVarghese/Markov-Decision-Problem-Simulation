@@ -175,7 +175,14 @@ class ValueIterationGUI(MDPGUI):
     def take_over(self, board, player_pos, p=1):
         self.p = p
         self.rewards = board.board
-        self.done_tiles = board.done_tiles
+        
+        self.done_tiles = []
+        m, n = self.rewards.shape
+        for i in range(m):
+            for j in range(n):
+                if self.rewards[i, j] != 0 and self.rewards[i, j] != -10:
+                    self.done_tiles.append((i, j))
+
         self.board = board.board
         self.player_pos = player_pos
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
