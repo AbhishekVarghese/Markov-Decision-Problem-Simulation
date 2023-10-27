@@ -106,7 +106,10 @@ class MDPGUI:
                 if name not in self.saved_boards:
                     self.saved_boards[name] = other_saved_boards[name]
                 elif name == self.current_board_name:
-                    self.saved_boards[name + " (1)"] = other_saved_boards[name]
+                    new_name = name
+                    while new_name in other_saved_boards:
+                        new_name = new_name + " (1)"
+                    self.saved_boards[new_name] = other_saved_boards[name]
 
         
         
