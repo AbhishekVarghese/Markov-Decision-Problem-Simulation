@@ -2,24 +2,18 @@
 
 This is a simulation of the standard textbook MDP environment(Robot in a maze) made using SimpleGUI and python.
 
-To install SimpleGUI 
-~~~
-pip install SimpleGUICS2Pygame
-~~~ 
-(You may need to use pip3 instead of pip)
+## Installation
 
-To run the GUI:
-~~~
-python3 main.py
-~~~ 
+To install all the requirements run 
 
-### Environment - Robot in a 2D maze :
+    pip install -r requirements.txt
+    
 
-**Goal** - Get to green squares marked with "done state" while avoiding touching the red squares. If you hit a wall (grey square) you will bounce back to the same square.
+## Environment - Robot in a 2D maze :
 
 **States** - Squares on the grid with cordinates (x,y)
 
-**Actions** - Up, Down, Left or Right 
+**Actions** - Up, Down, Left or Right (If there are walls in a certain direction, those actions don't exist)
 
 **Rewards** - 
 * +1 on reaching green square

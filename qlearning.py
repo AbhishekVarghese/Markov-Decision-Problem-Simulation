@@ -211,7 +211,7 @@ class Qlearning_with_GUI() :
         self.default_timer_speed = 1000
         self.speed_mod_factor = 1
         self.speed_increment = 0.1
-        self.cell_pad_ratio = 0.1
+        self.cell_pad_ratio = 0.25
 
         self.cmap = {
             0: "black",
@@ -267,10 +267,10 @@ class Qlearning_with_GUI() :
 
         self.button_avoid_visited_states = self.frame.add_button(f"Try avoid visited states in this episode : {self.avoid_visited_states}", self.flip_avoid_states)
         self.frame.add_label("\n"*6)
-        self.speed_label = self.frame.add_input("Speed", self.update_speed("set"), width=100)
+        self.speed_label = self.frame.add_input("Animation Speed multiplier", self.update_speed("set"), width=100)
         self.speed_label.set_text(str(self.speed_mod_factor))
-        self.frame.add_button("+", self.update_speed("+"), width = 100)
-        self.frame.add_button("--", self.update_speed("-"), width = 100)
+        # self.frame.add_button("+", self.update_speed("+"), width = 100)
+        # self.frame.add_button("--", self.update_speed("-"), width = 100)
         self.animation_freq_display_label = self.frame.add_label(f"Taking action every {self.timer_play._interval*100//100/1000}s")
         self.show_text_button = self.frame.add_button(f"Show V_epsilon in text : {self.show_Vepsilon_text}", self.flip_show_text)
         self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}", self.flip_show_policy)
@@ -334,7 +334,7 @@ class Qlearning_with_GUI() :
             assert (x > 0), "Error: Animation Frequency Modifier has to be >=0"
             self.speed_mod_factor = x
             self.speed_label.set_text("{:.3f}".format(self.speed_mod_factor))
-            print("Setting Animation frequency to", self.default_timer_speed/self.speed_mod_factor)
+            print("Setting Animation time interval to", self.default_timer_speed/self.speed_mod_factor, "ms")
             self.timer_play._interval = self.default_timer_speed/self.speed_mod_factor
             self.animation_freq_display_label.set_text(f"Taking action every {self.timer_play._interval*100//100/1000}s")
 
@@ -364,9 +364,12 @@ class Qlearning_with_GUI() :
 
     def draw_board(self, canvas):
         # Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
-        Vstarest = self.agent.estV
-        cmap = np.tanh(np.pi*Vstarest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
-        num_squares_along_height, num_squares_along_width = Vstarest.shape
+        Vepsilonest = self.agent.estV
+        Qest = self.agent.estQ
+        
+        cmap = np.tanh(np.pi*Vepsilonest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
+        cmapQ = np.tanh(np.pi*Qest/2)/2 + 0.5
+        num_squares_along_height, num_squares_along_width = Vepsilonest.shape
         for i in range(num_squares_along_height):
             for j in range(num_squares_along_width):
                 rect = [
@@ -375,20 +378,59 @@ class Qlearning_with_GUI() :
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
-                rect[0] = (rect[0][0] + self.cell_pad, rect[0][1] + self.cell_pad)
-                rect[1] = (rect[1][0] + self.cell_pad, rect[1][1] - self.cell_pad)
-                rect[2] = (rect[2][0] - self.cell_pad, rect[2][1] - self.cell_pad)
-                rect[3] = (rect[3][0] - self.cell_pad, rect[3][1] + self.cell_pad)
+                inner_rect = []
+                inner_rect.append( (rect[0][0] + self.cell_pad, rect[0][1] + self.cell_pad) )
+                inner_rect.append( (rect[1][0] - self.cell_pad, rect[1][1] + self.cell_pad) )
+                inner_rect.append( (rect[2][0] - self.cell_pad, rect[2][1] - self.cell_pad) )
+                inner_rect.append( (rect[3][0] + self.cell_pad, rect[3][1] - self.cell_pad) )
+                left_action_polygon = [rect[0], inner_rect[0], inner_rect[3],rect[3]]
+                up_action_polygon = [rect[0], inner_rect[0], inner_rect[1],rect[1]]
+                right_action_polygon = [rect[1], inner_rect[1], inner_rect[2],rect[2]]
+                down_action_polygon = [rect[2], inner_rect[2], inner_rect[3],rect[3]]
                 color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 if not (i,j) in self.board.done_tiles :
                     if color == self.cmap[0] :
                         t = cmap[i,j]
                         curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                        curr_action_colors = [ f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                            for t in cmapQ[i,j, :] ]
+
+                        #Inner Square with Vvalue of the State
+                        canvas.draw_polygon(
+                            inner_rect, 0, 
+                            "rgb(0,0,0)", 
+                            curr_color
+                        )
+
+                        #Outer trapezoids with respective QValues
+                        canvas.draw_polygon(
+                            left_action_polygon, 0,
+                            "rgba(0,0,0,0)",
+                            curr_action_colors[ self.agent.action_to_index["left"] ]
+                        )
+                        canvas.draw_polygon(
+                            right_action_polygon, 0,
+                            "rgba(0,0,0,0)",
+                            curr_action_colors[ self.agent.action_to_index["right"] ]
+                        )
+                        canvas.draw_polygon(
+                            up_action_polygon, 0,
+                            "rgba(0,0,0,0)",
+                            curr_action_colors[ self.agent.action_to_index["up"] ]
+                        )
+                        canvas.draw_polygon(
+                            down_action_polygon, 0,
+                            "rgba(0,0,0,0)",
+                            curr_action_colors[ self.agent.action_to_index["down"] ]
+                        )
+
+                        #Borders of the cell
                         canvas.draw_polygon(
                             rect, self.grid_width, 
                             self.grid_color, 
-                            curr_color
+                            "rgba(0,0,0,0)"
                         )
+
                     else :
                         canvas.draw_polygon(
                             rect, self.grid_width, 
@@ -397,8 +439,8 @@ class Qlearning_with_GUI() :
                         )
                     if self.show_Vepsilon_text :
                         canvas.draw_text(
-                            "%.5f"% Vstarest[i,j],
-                            self.ij2xy(i+0.5, j+0.5),
+                            "%.2f"% Vepsilonest[i,j],
+                            self.ij2xy(i+0.5, j+0.40),
                             font_size=12,
                             font_color="white"
                         )
