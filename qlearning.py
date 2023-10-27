@@ -18,11 +18,13 @@ class Agent :
         self.state_space_shape = state_space_shape
         self.epsilon = epsilon
         self.action_to_index = {'left' : 0, 'right' : 1, 'up' : 2, 'down' :3}
+        self.index_to_action = {0 : 'left', 1: 'right', 2 : 'up', 3: 'down'}
         self.reset_agent()
 
     def reset_agent(self) :
         # self.estQ = np.random.random(size = self.state_space_shape + (4,) ) - 0.5 # The last indice stores action
         self.estQ = np.zeros(shape = self.state_space_shape + (4,)  )
+        self.opt_policy = np.zeros(shape = self.state_space_shape)
         self.estV = np.zeros(shape = self.state_space_shape)
 
     @property
@@ -49,6 +51,7 @@ class Agent :
         Qlhs = (1 - self.alpha)* self.estQ[ state[0], state[1],action]
         Qrhs = self.alpha * ( reward + self.gamma * np.max(self.estQ[ new_state[0], new_state[1], : ]))
         self.estQ[state[0], state[1],action] = Qlhs + Qrhs
+        self.opt_policy[state[0], state[1]] = np.argmax(self.estQ[state[0], state[1], :])
 
         #Compute accurate V_epsilon
         legal_actions_idx = [self.action_to_index[i] for i in legal_actions]
@@ -154,6 +157,8 @@ class Qlearning_with_GUI() :
         self.max_T_in_str = ""
         self.just_done = False
         self.show_Vepsilon_text = True
+        self.draw_policy = False
+        
 
 
         #Prevent Concurrency issues i.e. Functions are called faster than they can finish using the timer
@@ -161,6 +166,7 @@ class Qlearning_with_GUI() :
 
     def take_over(self, board, start_pos) :
         self.board = board
+        print(board.board)
         self.env = Mdp_env(board,start_pos=start_pos)
         self.agent = Agent((self.env.board_height, self.env.board_width), self.gamma, self.alpha, self.epsilon)
         self.start_pos = start_pos
@@ -185,6 +191,7 @@ class Qlearning_with_GUI() :
             if hasattr(self, "timer_play") and self.timer_play.is_running:
                 self.timer_play.stop()
             self.draw_mode = None
+            self.timer_play.stop()
             self.frame._controls = []
             self.frame._draw_controlpanel()
             send_fn(
@@ -204,6 +211,7 @@ class Qlearning_with_GUI() :
         self.default_timer_speed = 1000
         self.speed_mod_factor = 1
         self.speed_increment = 0.1
+        self.cell_pad_ratio = 0.1
 
         self.cmap = {
             0: "black",
@@ -212,6 +220,30 @@ class Qlearning_with_GUI() :
             -10: "grey",
             "other": "cyan"
         }
+        self.arrow_width = 0.02
+        w = self.arrow_width
+        self.arrow_polygons = {
+            "right": [
+                [0.5 - w/2, 0.1],
+                [0.5 + w/2, 0.1],
+                [0.5 + w/2, 0.8],
+                [0.7, 0.7],
+                [0.5, 0.9],
+                [0.3, 0.7],
+                [0.5 - w/2, 0.8],
+            ],
+        }
+        self.arrow_polygons["left"] = [
+            (i, 1-j) for i, j in self.arrow_polygons["right"]
+        ]
+        self.arrow_polygons["down"] = [
+            (j, i) for i, j in self.arrow_polygons["right"]
+        ]
+        self.arrow_polygons["up"] = [
+            (1-j, i) for i, j in self.arrow_polygons["right"]
+        ]
+        self.arrow_color = "rgb(255, 255, 255)"
+
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
         self.canvas_height = self.frame._canvas._height
@@ -240,8 +272,8 @@ class Qlearning_with_GUI() :
         self.frame.add_button("+", self.update_speed("+"), width = 100)
         self.frame.add_button("--", self.update_speed("-"), width = 100)
         self.animation_freq_display_label = self.frame.add_label(f"Taking action every {self.timer_play._interval*100//100/1000}s")
-        self.show_text_button = self.frame.add_button(f"Show V_epsilon text : {self.show_Vepsilon_text}", self.flip_show_text)
-
+        self.show_text_button = self.frame.add_button(f"Show V_epsilon in text : {self.show_Vepsilon_text}", self.flip_show_text)
+        self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}", self.flip_show_policy)
         self.frame.set_draw_handler(self.draw_board)
         
         self.frame.add_label("\n"*10)
@@ -251,49 +283,51 @@ class Qlearning_with_GUI() :
 
     def flip_avoid_states(self) :
         self.avoid_visited_states = not self.avoid_visited_states
-        self.show_text_button.set_text(f"Try avoid visited states in this episode : {self.avoid_visited_states}")
+        self.button_avoid_visited_states.set_text(f"Try avoid visited states in this episode : {self.avoid_visited_states}")
 
     def flip_show_text(self) :
         self.show_Vepsilon_text = not self.show_Vepsilon_text
-        self.button_avoid_visited_states.set_text(f"Show V_epsilon text : {self.show_Vepsilon_text}")
+        self.show_text_button.set_text(f"Show V_epsilon in text : {self.show_Vepsilon_text}")
 
+    def flip_show_policy(self) :
+        self.draw_policy = not self.draw_policy
+        self.show_policy_button.set_text(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}")
 
     def update_T(self,T) :
         if T.isdigit() :
             self.max_T_in_str = str(int(T))
+            print("Changed T to", self.max_T_in_str)
         else :
             self.max_T_in_str = ""
         self.T_label.set_text(self.max_T_in_str)
 
 
     def update_gamma(self,gamma) :
-        gamma = float(gamma)
-        if  0 <= gamma <= 1 :
-            self.gamma = gamma
-            self.agent.gamma = gamma
-        print("Changed gamma to", self.epsilon)
+        if gamma.replace('.', '', 1).isdigit() :
+            gamma = float(gamma)
+            if  0 <= gamma <= 1 :
+                self.gamma = gamma
+                self.agent.gamma = gamma
+            print("Changed gamma to", self.gamma)
         self.gamma_label.set_text(str(self.gamma))
 
     def update_epsilon(self,epsilon) :
-        epsilon = float(epsilon)
-        if  0 <= epsilon <= 1 :
-            self.epsilon = epsilon
-            self.agent.epsilon = epsilon
-        print("Changed epsilon to", self.epsilon)
+        if epsilon.replace('.', '', 1).isdigit() :
+            epsilon = float(epsilon)
+            if  0 <= epsilon <= 1 :
+                self.epsilon = epsilon
+                self.agent.epsilon = epsilon
+            print("Changed epsilon to", self.epsilon)
         self.epsilon_label.set_text(str(self.epsilon))
 
     def update_alpha(self,alpha) :
-        alpha = float(alpha)
-        if 0 <= alpha :
-            self.alpha = alpha
-            self.agent.alpha = alpha
-        print("Changed alpha to", alpha)
+        if alpha.replace('.', '', 1).isdigit() :
+            alpha = float(alpha)
+            if 0 <= alpha :
+                self.alpha = alpha
+                self.agent.alpha = alpha
+            print("Changed alpha to", alpha)
         self.alpha_label.set_text(str(self.alpha))
-
-    def run_sim(self) :
-        self.timer_play.start()
-    def stop_sim(self) :
-        self.timer_play.stop()
 
     def update_speed(self, mode):
         def common(x):
@@ -320,7 +354,14 @@ class Qlearning_with_GUI() :
                     print("Changed Speed Modifier to",x)
                     common(x)
             return handler
-        
+
+
+    def run_sim(self) :
+        self.timer_play.start()
+    def stop_sim(self) :
+        self.timer_play.stop()
+
+
     def draw_board(self, canvas):
         # Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
         Vstarest = self.agent.estV
@@ -334,15 +375,26 @@ class Qlearning_with_GUI() :
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
+                rect[0] = (rect[0][0] + self.cell_pad, rect[0][1] + self.cell_pad)
+                rect[1] = (rect[1][0] + self.cell_pad, rect[1][1] - self.cell_pad)
+                rect[2] = (rect[2][0] - self.cell_pad, rect[2][1] - self.cell_pad)
+                rect[3] = (rect[3][0] - self.cell_pad, rect[3][1] + self.cell_pad)
                 color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
-                if color == "black" :
-                    t = cmap[i,j]
-                    curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                    canvas.draw_polygon(
-                        rect, self.grid_width, 
-                        self.grid_color, 
-                        curr_color
-                    )
+                if not (i,j) in self.board.done_tiles :
+                    if color == self.cmap[0] :
+                        t = cmap[i,j]
+                        curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                        canvas.draw_polygon(
+                            rect, self.grid_width, 
+                            self.grid_color, 
+                            curr_color
+                        )
+                    else :
+                        canvas.draw_polygon(
+                            rect, self.grid_width, 
+                            self.grid_color, 
+                            color
+                        )
                     if self.show_Vepsilon_text :
                         canvas.draw_text(
                             "%.5f"% Vstarest[i,j],
@@ -350,32 +402,33 @@ class Qlearning_with_GUI() :
                             font_size=12,
                             font_color="white"
                         )
-                elif color == self.cmap["other"]:
-                    canvas.draw_text(
-                        str(int(self.env.board[i, j])),
-                        self.ij2xy(i+0.5, j+0.5),
-                        font_size=20,
-                        font_color="black"
-                    )
+                    if self.draw_policy and color != "grey":
+                        opt_action = self.agent.index_to_action[self.agent.opt_policy[i][j]]
+                        polygon = self.arrow_polygons[opt_action]
+                        polygon = [self.ij2xy(i+di, j+dj) for di, dj in polygon]
+                        canvas.draw_polygon(
+                            polygon, 0, 
+                            self.arrow_color, 
+                            self.arrow_color
+                            )
                 else :
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 
                         color
                     )
-
-                if (i, j) in self.board.done_tiles:
-                    rect = [
+                    rect_done = [
                         self.ij2xy(i + 0.3, j+0.3),
                         self.ij2xy(i + 0.7, j+0.3),
                         self.ij2xy(i + 0.7, j+0.7),
                         self.ij2xy(i + 0.3, j+0.7),
                     ]
                     canvas.draw_polygon(
-                        rect, 2, 
+                        rect_done, 2, 
                         "white", 
                         "rgba(0, 0, 0, 0)"
                     )
+                    
         i, j  = self.env.curr_pos
         canvas.draw_circle(
             self.ij2xy(i+0.5, j+0.5), 
@@ -397,6 +450,7 @@ class Qlearning_with_GUI() :
         self.x_pad = x_pad
         self.y_pad = y_pad
         self.cell_size = cell_size
+        self.cell_pad = self.cell_pad_ratio*self.cell_size
 
 
     def ij2xy(self, index0, index1):
