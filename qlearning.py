@@ -147,7 +147,7 @@ class Mdp_env :
 
 
 class Qlearning_with_GUI() :
-    def __init__(self, frame, gamma = 0.9, epsilon = 1, alpha= 0.01) :
+    def __init__(self, frame, gamma = 0.9, epsilon = 1, alpha= 1) :
         self.frame = frame
         self.epsilon = epsilon
         self.avoid_visited_states = False
@@ -157,6 +157,7 @@ class Qlearning_with_GUI() :
         self.max_T_in_str = ""
         self.just_done = False
         self.show_Vepsilon_text = True
+        self.show_Qval = True
         self.draw_policy = False
         
 
@@ -272,18 +273,28 @@ class Qlearning_with_GUI() :
         # self.frame.add_button("+", self.update_speed("+"), width = 100)
         # self.frame.add_button("--", self.update_speed("-"), width = 100)
         self.animation_freq_display_label = self.frame.add_label(f"Taking action every {self.timer_play._interval*100//100/1000}s")
-        self.show_text_button = self.frame.add_button(f"Show V_epsilon in text : {self.show_Vepsilon_text}", self.flip_show_text)
-        self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}", self.flip_show_policy)
-        self.frame.set_draw_handler(self.draw_board)
         
+        self.frame.set_draw_handler(self.draw_board)
         self.frame.add_label("\n"*10)
 
         self.frame.add_button("Back to input", self.release_control("input"), width = 200)
         self.frame.add_button("Switch to Value Iteration", self.release_control("value_iteration"), width = 200)
+        
+
+        self.frame.add_label("\n"*10)
+        self.frame.add_label("Hide/Show more details. May affect the FPS of the display.")
+        self.fps_label = self.frame.add_label("FPS : 0")
+        self.show_text_button = self.frame.add_button(f"Show V_epsilon in text : {self.show_Vepsilon_text}", self.flip_show_text)
+        self.show_Qvalues_button = self.frame.add_button(f"Show Qvalues as ColorMap : {self.show_Qval}", self.flip_show_qval)
+        self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}", self.flip_show_policy)
 
     def flip_avoid_states(self) :
         self.avoid_visited_states = not self.avoid_visited_states
         self.button_avoid_visited_states.set_text(f"Try avoid visited states in this episode : {self.avoid_visited_states}")
+    
+    def flip_show_qval(self) :
+        self.show_Qval = not self.show_Qval
+        self.show_Qvalues_button.set_text(f"Show Qvalues as ColorMap : {self.show_Qval}")
 
     def flip_show_text(self) :
         self.show_Vepsilon_text = not self.show_Vepsilon_text
@@ -363,38 +374,53 @@ class Qlearning_with_GUI() :
 
 
     def draw_board(self, canvas):
-        # Vest = (1 - self.epsilon)* np.max(Qest, axis=-1) + np.sum( (self.epsilon/4)*Qest,axis = -1 )
+        draw_start_time = time.time() # To compute FPS
+
         Vepsilonest = self.agent.estV
-        Qest = self.agent.estQ
+        # cmap = np.tanh(np.pi*Vepsilonest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
         
-        cmap = np.tanh(np.pi*Vepsilonest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
-        cmapQ = np.tanh(np.pi*Qest/2)/2 + 0.5
+        if self.show_Qval :
+            Qest = self.agent.estQ
+            cmapQ = np.tanh(np.pi*Qest/2)/2 + 0.5
+
         num_squares_along_height, num_squares_along_width = Vepsilonest.shape
         for i in range(num_squares_along_height):
             for j in range(num_squares_along_width):
+                # Compute Cell dimensions
+                a = time.time()
                 rect = [
                     self.ij2xy(i, j),
                     self.ij2xy(i, j+1),
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
+                b = time.time()
+                print("copmute outer rect time", b - a)
+
+                #Compute VVal rectangle
+                a = time.time()
                 inner_rect = []
                 inner_rect.append( (rect[0][0] + self.cell_pad, rect[0][1] + self.cell_pad) )
                 inner_rect.append( (rect[1][0] - self.cell_pad, rect[1][1] + self.cell_pad) )
                 inner_rect.append( (rect[2][0] - self.cell_pad, rect[2][1] - self.cell_pad) )
                 inner_rect.append( (rect[3][0] + self.cell_pad, rect[3][1] - self.cell_pad) )
-                left_action_polygon = [rect[0], inner_rect[0], inner_rect[3],rect[3]]
-                up_action_polygon = [rect[0], inner_rect[0], inner_rect[1],rect[1]]
-                right_action_polygon = [rect[1], inner_rect[1], inner_rect[2],rect[2]]
-                down_action_polygon = [rect[2], inner_rect[2], inner_rect[3],rect[3]]
+                b = time.time()
+                print("Computer inner rect time", b - a)
+
+                #Compute Qval Polygons
+                if self.show_Qval :
+                    left_action_polygon = [rect[0], inner_rect[0], inner_rect[3],rect[3]]
+                    up_action_polygon = [rect[0], inner_rect[0], inner_rect[1],rect[1]]
+                    right_action_polygon = [rect[1], inner_rect[1], inner_rect[2],rect[2]]
+                    down_action_polygon = [rect[2], inner_rect[2], inner_rect[3],rect[3]]
+
+
                 color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 if not (i,j) in self.board.done_tiles :
-                    if color == self.cmap[0] :
-                        t = cmap[i,j]
-                        curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                        curr_action_colors = [ f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                            for t in cmapQ[i,j, :] ]
-
+                    if color == self.cmap[0] : # To do only if there's no reward on this state
+                        # t = cmap[i,j]
+                        # curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                        curr_color = self.value2color(Vepsilonest[i,j])
                         #Inner Square with Vvalue of the State
                         canvas.draw_polygon(
                             inner_rect, 0, 
@@ -403,26 +429,29 @@ class Qlearning_with_GUI() :
                         )
 
                         #Outer trapezoids with respective QValues
-                        canvas.draw_polygon(
-                            left_action_polygon, 0,
-                            "rgba(0,0,0,0)",
-                            curr_action_colors[ self.agent.action_to_index["left"] ]
-                        )
-                        canvas.draw_polygon(
-                            right_action_polygon, 0,
-                            "rgba(0,0,0,0)",
-                            curr_action_colors[ self.agent.action_to_index["right"] ]
-                        )
-                        canvas.draw_polygon(
-                            up_action_polygon, 0,
-                            "rgba(0,0,0,0)",
-                            curr_action_colors[ self.agent.action_to_index["up"] ]
-                        )
-                        canvas.draw_polygon(
-                            down_action_polygon, 0,
-                            "rgba(0,0,0,0)",
-                            curr_action_colors[ self.agent.action_to_index["down"] ]
-                        )
+                        if self.show_Qval :
+                            curr_action_colors = [ f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                                for t in cmapQ[i,j, :] ]
+                            canvas.draw_polygon(
+                                left_action_polygon, 1,
+                                "rgba(255,255,255,1)",
+                                curr_action_colors[ self.agent.action_to_index["left"] ]
+                            )
+                            canvas.draw_polygon(
+                                right_action_polygon, 1,
+                                "rgba(255,255,255,1)",
+                                curr_action_colors[ self.agent.action_to_index["right"] ]
+                            )
+                            canvas.draw_polygon(
+                                up_action_polygon, 1,
+                                "rgba(255,255,255,1)",
+                                curr_action_colors[ self.agent.action_to_index["up"] ]
+                            )
+                            canvas.draw_polygon(
+                                down_action_polygon, 1,
+                                "rgba(255,255,255,1)",
+                                curr_action_colors[ self.agent.action_to_index["down"] ]
+                            )
 
                         #Borders of the cell
                         canvas.draw_polygon(
@@ -466,7 +495,7 @@ class Qlearning_with_GUI() :
                         self.ij2xy(i + 0.3, j+0.7),
                     ]
                     canvas.draw_polygon(
-                        rect_done, 2, 
+                        rect_done, 2.5, 
                         "white", 
                         "rgba(0, 0, 0, 0)"
                     )
@@ -478,6 +507,19 @@ class Qlearning_with_GUI() :
             "yellow", "yellow"
         )
 
+        draw_end_time = time.time()
+        self.fps_label.set_text(f"FPS : { int(1 / (draw_end_time - draw_start_time)) }")
+
+    def value2color(self, val, max_val = 1, min_val = -1):
+        if val < 0:
+            color = abs(val)/abs(min_val+1e-10) * self.cmap_negvval
+        else:
+            color = abs(val)/abs(max_val+1e-10) * self.cmap_posvval
+        color = color.tolist()
+        color = [int(c) for c in color]
+        color_str = "rgb({}, {}, {})".format(*color)
+        return color_str
+    
     def set_pad_l(self):
         num_squares_along_width, num_squares_along_height = self.env.board_width, self.env.board_height
         cell_w, cell_h = self.canvas_width//num_squares_along_width, self.canvas_height//num_squares_along_height
@@ -493,7 +535,6 @@ class Qlearning_with_GUI() :
         self.y_pad = y_pad
         self.cell_size = cell_size
         self.cell_pad = self.cell_pad_ratio*self.cell_size
-
 
     def ij2xy(self, index0, index1):
         x = self.x_pad + index1*self.cell_size 
