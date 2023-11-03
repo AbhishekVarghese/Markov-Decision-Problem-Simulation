@@ -47,15 +47,16 @@ class MDPGUI:
         self.transition_prob = 1.0
 
         # Board visualisation constants        
-        self.background_color = np.array([255, 255, 240]) 
+        self.background_color = np.array([248, 248, 255])  
         self.grid_color = "black"
         self.text_color = "black"
         self.arrow_color = "black"
         self.wall_color = "grey"
         self.grid_width = 2
         self.draw_mode = 0
-        self.cmap_negvval = np.array([255, 69, 0])
-        self.cmap_posvval = np.array([124, 252, 0])
+        self.cmap_negvval = np.array([199, 21, 133])
+        self.cmap_posvval = np.array([0, 250, 154])
+        self.agent_color = (255, 215, 0)
 
 
         self.cmap = {
@@ -446,7 +447,7 @@ class MDPGUI:
         canvas.draw_circle(
             self.ij2xy(i+0.5, j+0.5), 
             cell_size//4, 2, 
-            "yellow", "yellow"
+            f"rgb{self.agent_color}", f"rgb{self.agent_color}"
         )
 
 

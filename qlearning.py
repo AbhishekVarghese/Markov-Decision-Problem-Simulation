@@ -203,15 +203,16 @@ class Qlearning_with_GUI() :
         
     def setup_frame(self) :
         # Board visualisation constants
-        self.background_color = np.array([255, 255, 240]) 
+        self.background_color = np.array([248, 248, 255]) 
         self.grid_color = "black"
         self.text_color = "black"
         self.arrow_color = "black"
         self.wall_color = "grey"
+        self.agent_color = (255, 215, 0)
         self.grid_width = 2
         self.draw_mode = 0
-        self.cmap_negvval = np.array([255, 69, 0])
-        self.cmap_posvval = np.array([124, 252, 0])
+        self.cmap_negvval = np.array([199, 21, 133])
+        self.cmap_posvval = np.array([0, 250, 154])
         self.cmap_neg_to_pos = self.cmap_posvval - self.cmap_negvval
         self.cmap_bag_to_pos = self.cmap_posvval - self.background_color
         self.cmap_bag_to_neg = self.cmap_negvval - self.background_color
@@ -420,40 +421,39 @@ class Qlearning_with_GUI() :
 
                 board_color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 if not (i,j) in self.board.done_tiles :
-                    # t = cmap[i,j]
-                    # curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                    # curr_action_colors = [ f"rgb{tuple( ( self.background_color + (t*self.cmap_bag_to_pos + (1-t)*self.cmap_bag_to_neg) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                    #         for t in cmapQ[i,j, :] ]
-
                     curr_color = f"rgb{tuple(Vcolor[i,j,:])}"
-                    #Inner Square with Vvalue of the State
+
+                    #Inner Square with the reward of the state
                     canvas.draw_polygon(
                         inner_rect, 0, 
                         self.grid_color, 
-                        curr_color
+                        board_color
                     )
 
+                    
+
+                    
                     #Outer trapezoids with respective QValues
                     if self.show_Qval :
                         # curr_action_colors = [ self.value2color(qval) for qval  in self.agent.estQ[i,j,:] ]
                             
                         canvas.draw_polygon(
-                            left_action_polygon, 1,
+                            left_action_polygon, self.grid_width/2,
                             self.grid_color,
                             f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['left']])}"
                         )
                         canvas.draw_polygon(
-                            right_action_polygon, 1,
+                            right_action_polygon, self.grid_width/2,
                             self.grid_color,
                             f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['right'] ])}"
                         )
                         canvas.draw_polygon(
-                            up_action_polygon, 1,
+                            up_action_polygon, self.grid_width/2,
                             self.grid_color,
                             f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['up'] ])}"
                         )
                         canvas.draw_polygon(
-                            down_action_polygon, 1,
+                            down_action_polygon, self.grid_width/2,
                             self.grid_color,
                             f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['down'] ])}"
                         )
@@ -465,13 +465,13 @@ class Qlearning_with_GUI() :
                         "rgba(0,0,0,0)"
                     )
 
-                    #Show background
+                    #Inner Circle with Vvalue of the State
                     canvas.draw_circle(
                         self.ij2xy(i + 0.5, j + 0.5), 
                         self.cell_size*0.15,
-                        1, 
-                        "rgba(0,0,0,0)", 
-                        board_color
+                        self.grid_width/2, 
+                        self.grid_color, 
+                        curr_color
                     )
 
 
@@ -512,8 +512,8 @@ class Qlearning_with_GUI() :
         i, j  = self.env.curr_pos
         canvas.draw_circle(
             self.ij2xy(i+0.5, j+0.5), 
-            self.cell_size//4, 2, 
-            "yellow", "yellow"
+            self.cell_size//4.5, 2, 
+            f"rgb{self.agent_color}", f"rgb{self.agent_color}"
         )
 
         draw_end_time = time.time()
