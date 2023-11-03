@@ -5,7 +5,7 @@ import math
 import json
 import os
 import copy
-
+from pygame import Color
 
 class DefaultDict(dict):
     def __init__(self, default_factory, **kwargs):
@@ -46,17 +46,26 @@ class MDPGUI:
         m, n = self.board.shape
         self.transition_prob = 1.0
 
-        # Board visualisation constants
-        self.cmap = {
-            0: "black",
-            1: "green",
-            -1: "red",
-            -10: "grey",
-            "other": "cyan"
-        }
-        self.grid_color = "blue"
+        # Board visualisation constants        
+        self.background_color = np.array([255, 255, 240]) 
+        self.grid_color = "black"
+        self.text_color = "black"
+        self.arrow_color = "black"
+        self.wall_color = "grey"
         self.grid_width = 2
         self.draw_mode = 0
+        self.cmap_negvval = np.array([255, 69, 0])
+        self.cmap_posvval = np.array([124, 252, 0])
+
+
+        self.cmap = {
+            0: f"rgb{tuple(self.background_color)}",
+            1: f"rgb{tuple(self.cmap_posvval)}",
+            -1: f"rgb{tuple(self.cmap_negvval)}",
+            -10: self.wall_color,
+            "other": "cyan"
+        }
+
 
         self.current_board_name = "My Board"
         self.current_board_num = 0
@@ -131,7 +140,11 @@ class MDPGUI:
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
 
     def setup_frame(self):
+        #Set up background color
+        self.frame._canvas._background_pygame_color = Color(self.background_color)
+
         m, n = self.board.shape
+        
         # self.frame.add_label("Set Input Configurations")
         # self.frame.add_label("(Note: You need to press enter after every text input)")
         

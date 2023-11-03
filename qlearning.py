@@ -6,6 +6,7 @@ import SimpleGUICS2Pygame.simpleguics2pygame as simplegui
 from input_mdp import MDPGUI,Board
 import math
 import time
+from pygame import Color
 
 
 def sigmoid(z):
@@ -202,23 +203,28 @@ class Qlearning_with_GUI() :
         
     def setup_frame(self) :
         # Board visualisation constants
-        
-        self.grid_color = "blue"
+        self.background_color = np.array([255, 255, 240]) 
+        self.grid_color = "black"
+        self.text_color = "black"
+        self.arrow_color = "black"
+        self.wall_color = "grey"
         self.grid_width = 2
         self.draw_mode = 0
-        self.cmap_negvval = np.array([224, 36, 36])
-        self.cmap_posvval = np.array([39, 166, 39])
+        self.cmap_negvval = np.array([255, 69, 0])
+        self.cmap_posvval = np.array([124, 252, 0])
         self.cmap_neg_to_pos = self.cmap_posvval - self.cmap_negvval
+        self.cmap_bag_to_pos = self.cmap_posvval - self.background_color
+        self.cmap_bag_to_neg = self.cmap_negvval - self.background_color
         self.default_timer_speed = 1000
         self.speed_mod_factor = 1
         self.speed_increment = 0.1
         self.cell_pad_ratio = 0.25
 
         self.cmap = {
-            0: "black",
+            0: f"rgb{tuple(self.background_color)}",
             1: f"rgb{tuple(self.cmap_posvval)}",
             -1: f"rgb{tuple(self.cmap_negvval)}",
-            -10: "grey",
+            -10: self.wall_color,
             "other": "cyan"
         }
         self.arrow_width = 0.02
@@ -243,7 +249,7 @@ class Qlearning_with_GUI() :
         self.arrow_polygons["up"] = [
             (1-j, i) for i, j in self.arrow_polygons["right"]
         ]
-        self.arrow_color = "rgb(255, 255, 255)"
+        
 
         # UI parameter imports
         self.canvas_width = self.frame._canvas._width
@@ -251,6 +257,9 @@ class Qlearning_with_GUI() :
 
         #Setting up timers
         self.timer_play = simplegui.create_timer(self.default_timer_speed, self.single_step)
+
+        #Set up background color
+        self.frame._canvas._background_pygame_color = Color(self.background_color)
 
         # Adding GUI elements
         self.gamma_label = self.frame.add_input("Discount Factor (Gamma)", self.update_gamma, width=100)
@@ -376,37 +385,31 @@ class Qlearning_with_GUI() :
     def draw_board(self, canvas):
         draw_start_time = time.time() # To compute FPS
 
-        Vepsilonest = self.agent.estV
-        # cmap = np.tanh(np.pi*Vepsilonest/2)/2 + 0.5 #Parametric curve going from red to black to green, instead of just plain average
+        Vepsilonest = np.array(self.agent.estV)
+        Vcolor = self.valuematrix2colormatrix(Vepsilonest)
         
         if self.show_Qval :
-            Qest = self.agent.estQ
-            cmapQ = np.tanh(np.pi*Qest/2)/2 + 0.5
-
+            Qest = np.array(self.agent.estQ)
+            Qcolor = self.valuematrix2colormatrix(Qest)
+            
         num_squares_along_height, num_squares_along_width = Vepsilonest.shape
         for i in range(num_squares_along_height):
             for j in range(num_squares_along_width):
                 # Compute Cell dimensions
-                a = time.time()
                 rect = [
                     self.ij2xy(i, j),
                     self.ij2xy(i, j+1),
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
-                b = time.time()
-                print("copmute outer rect time", b - a)
-
+                
                 #Compute VVal rectangle
-                a = time.time()
                 inner_rect = []
                 inner_rect.append( (rect[0][0] + self.cell_pad, rect[0][1] + self.cell_pad) )
                 inner_rect.append( (rect[1][0] - self.cell_pad, rect[1][1] + self.cell_pad) )
                 inner_rect.append( (rect[2][0] - self.cell_pad, rect[2][1] - self.cell_pad) )
                 inner_rect.append( (rect[3][0] + self.cell_pad, rect[3][1] - self.cell_pad) )
-                b = time.time()
-                print("Computer inner rect time", b - a)
-
+                
                 #Compute Qval Polygons
                 if self.show_Qval :
                     left_action_polygon = [rect[0], inner_rect[0], inner_rect[3],rect[3]]
@@ -415,65 +418,71 @@ class Qlearning_with_GUI() :
                     down_action_polygon = [rect[2], inner_rect[2], inner_rect[3],rect[3]]
 
 
-                color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
+                board_color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 if not (i,j) in self.board.done_tiles :
-                    if color == self.cmap[0] : # To do only if there's no reward on this state
-                        # t = cmap[i,j]
-                        # curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                        curr_color = self.value2color(Vepsilonest[i,j])
-                        #Inner Square with Vvalue of the State
+                    # t = cmap[i,j]
+                    # curr_color = f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                    # curr_action_colors = [ f"rgb{tuple( ( self.background_color + (t*self.cmap_bag_to_pos + (1-t)*self.cmap_bag_to_neg) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
+                    #         for t in cmapQ[i,j, :] ]
+
+                    curr_color = f"rgb{tuple(Vcolor[i,j,:])}"
+                    #Inner Square with Vvalue of the State
+                    canvas.draw_polygon(
+                        inner_rect, 0, 
+                        self.grid_color, 
+                        curr_color
+                    )
+
+                    #Outer trapezoids with respective QValues
+                    if self.show_Qval :
+                        # curr_action_colors = [ self.value2color(qval) for qval  in self.agent.estQ[i,j,:] ]
+                            
                         canvas.draw_polygon(
-                            inner_rect, 0, 
-                            "rgb(0,0,0)", 
-                            curr_color
+                            left_action_polygon, 1,
+                            self.grid_color,
+                            f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['left']])}"
+                        )
+                        canvas.draw_polygon(
+                            right_action_polygon, 1,
+                            self.grid_color,
+                            f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['right'] ])}"
+                        )
+                        canvas.draw_polygon(
+                            up_action_polygon, 1,
+                            self.grid_color,
+                            f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['up'] ])}"
+                        )
+                        canvas.draw_polygon(
+                            down_action_polygon, 1,
+                            self.grid_color,
+                            f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['down'] ])}"
                         )
 
-                        #Outer trapezoids with respective QValues
-                        if self.show_Qval :
-                            curr_action_colors = [ f"rgb{tuple( ( (t*self.cmap_posvval + (1-t)*self.cmap_negvval) *( 0.47*np.cos(2*np.pi*t) + 0.53) ).astype(int) )}"
-                                for t in cmapQ[i,j, :] ]
-                            canvas.draw_polygon(
-                                left_action_polygon, 1,
-                                "rgba(255,255,255,1)",
-                                curr_action_colors[ self.agent.action_to_index["left"] ]
-                            )
-                            canvas.draw_polygon(
-                                right_action_polygon, 1,
-                                "rgba(255,255,255,1)",
-                                curr_action_colors[ self.agent.action_to_index["right"] ]
-                            )
-                            canvas.draw_polygon(
-                                up_action_polygon, 1,
-                                "rgba(255,255,255,1)",
-                                curr_action_colors[ self.agent.action_to_index["up"] ]
-                            )
-                            canvas.draw_polygon(
-                                down_action_polygon, 1,
-                                "rgba(255,255,255,1)",
-                                curr_action_colors[ self.agent.action_to_index["down"] ]
-                            )
+                    #Borders of the cell
+                    canvas.draw_polygon(
+                        rect, self.grid_width, 
+                        self.grid_color, 
+                        "rgba(0,0,0,0)"
+                    )
 
-                        #Borders of the cell
-                        canvas.draw_polygon(
-                            rect, self.grid_width, 
-                            self.grid_color, 
-                            "rgba(0,0,0,0)"
-                        )
+                    #Show background
+                    canvas.draw_circle(
+                        self.ij2xy(i + 0.5, j + 0.5), 
+                        self.cell_size*0.15,
+                        1, 
+                        "rgba(0,0,0,0)", 
+                        board_color
+                    )
 
-                    else :
-                        canvas.draw_polygon(
-                            rect, self.grid_width, 
-                            self.grid_color, 
-                            color
-                        )
+
                     if self.show_Vepsilon_text :
                         canvas.draw_text(
                             "%.2f"% Vepsilonest[i,j],
                             self.ij2xy(i+0.5, j+0.40),
                             font_size=12,
-                            font_color="white"
+                            font_color= self.text_color
                         )
-                    if self.draw_policy and color != "grey":
+                    if self.draw_policy and board_color != self.wall_color :
                         opt_action = self.agent.index_to_action[self.agent.opt_policy[i][j]]
                         polygon = self.arrow_polygons[opt_action]
                         polygon = [self.ij2xy(i+di, j+dj) for di, dj in polygon]
@@ -486,7 +495,7 @@ class Qlearning_with_GUI() :
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 
-                        color
+                        board_color
                     )
                     rect_done = [
                         self.ij2xy(i + 0.3, j+0.3),
@@ -510,15 +519,16 @@ class Qlearning_with_GUI() :
         draw_end_time = time.time()
         self.fps_label.set_text(f"FPS : { int(1 / (draw_end_time - draw_start_time)) }")
 
-    def value2color(self, val, max_val = 1, min_val = -1):
-        if val < 0:
-            color = abs(val)/abs(min_val+1e-10) * self.cmap_negvval
-        else:
-            color = abs(val)/abs(max_val+1e-10) * self.cmap_posvval
-        color = color.tolist()
-        color = [int(c) for c in color]
-        color_str = "rgb({}, {}, {})".format(*color)
-        return color_str
+    def valuematrix2colormatrix(self, Valmatrix):
+        #Color Computation. Logic : Background Vector + scaled vector of linear interpolation between positive and negative. The scale is a cosine scale.
+        #Resultant : Parametric curve going from approx positive to approx background to approx negative
+
+        cmap = np.tanh(np.pi*Valmatrix/2)/2 + 0.5 
+        cmap = np.expand_dims(cmap, -1)
+        scaledcmap = 0.47*np.cos(2*np.pi*cmap) + 0.53
+        cmap_linintrpol = self.cmap_bag_to_neg + cmap*(self.cmap_bag_to_pos - self.cmap_bag_to_neg)
+        col_matrix = (self.background_color + cmap_linintrpol * scaledcmap).astype(int)
+        return col_matrix
     
     def set_pad_l(self):
         num_squares_along_width, num_squares_along_height = self.env.board_width, self.env.board_height
