@@ -168,7 +168,7 @@ class MDPGUI:
         self.frame.add_button("Draw -1 Reward", self.draw_mode_handler(-1), width = 200)
         self.frame.add_button("Draw Wall", self.draw_mode_handler(-10), width = 200)
         # self.c_reward = self.frame.add_input("Draw Custom Reward", self.custom_draw_mode, width = 200)
-        self.frame.add_button("Mark Done States", self.draw_mode_handler("done"), width = 200)
+        self.frame.add_button("Mark Terminal States", self.draw_mode_handler("done"), width = 200)
         self.frame.add_button("Erase", self.draw_mode_handler(0), width = 200)
 
         self.frame.add_label("\n"*10)
