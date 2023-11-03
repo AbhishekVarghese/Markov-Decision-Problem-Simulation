@@ -124,19 +124,23 @@ class ValueIterationGUI(MDPGUI):
         self.maxiter_increment = 20
 
         self.timer_speed = 1
-        self.speed_increment = 0.1
+        self.speed_increment = 1
         self.timer_multiplier = 50
 
-        self.cmap_negvval = np.array([170,0,0])
-        self.cmap_posvval = np.array([0,150,0])
+        self.grid_color = "black"
+        self.text_color = "black"
+        self.wall_color = "grey"
+
+        self.cmap_negvval = np.array([199, 21, 133])
+        self.cmap_posvval = np.array([0, 250, 154])
+        self.background_color = np.array([248, 248, 255]) 
         self.cmap = {
-            0: "black",
+            0: f"rgb{tuple(self.background_color)}",
             1: f"rgb{tuple(self.cmap_posvval)}",
             -1: f"rgb{tuple(self.cmap_negvval)}",
-            -10: "grey",
+            -10: self.wall_color,
             "other": "cyan"
         }
-        self.grid_color = "blue"
         self.grid_width = 2
         self.draw_mode = 0
         self.canvas_width = self.frame._canvas._width
@@ -147,7 +151,7 @@ class ValueIterationGUI(MDPGUI):
         self.draw_values = False
         self.agent_path = []
 
-        self.arrow_color = "rgb(255, 255, 255)"
+        self.arrow_color = "black"
         self.arrow_width = 0.02
 
         w = self.arrow_width
@@ -434,9 +438,19 @@ class ValueIterationGUI(MDPGUI):
         color_str = "rgb({}, {}, {})".format(*color)
         return color_str
 
+
+    def value2color_vectorized(self, val_matrix):
+        val_matrix = val_matrix[:, :, None]
+        max_val, min_val = self.values.max(), self.values.min()
+        colors = (val_matrix <= 0) * np.abs(val_matrix/(min_val+1e-10)) * self.cmap_negvval[None, None, :] \
+                + (val_matrix > 0) * np.abs(val_matrix/(max_val+1e-10)) * self.cmap_posvval[None, None, :]
+        colors = np.uint8(colors)
+        return colors
+
     def draw_board(self, canvas):
         m, n = self.board.shape
-        max_val, min_val = self.values.max(), self.values.min()
+        color_matrix = self.value2color_vectorized(self.values)
+        # max_val, min_val = self.values.max(), self.values.min()
         for i in range(m):
             for j in range(n):
                 rect = [
@@ -446,14 +460,29 @@ class ValueIterationGUI(MDPGUI):
                     self.ij2xy(i+1, j),
                 ]
                 color = self.cmap.get(self.board[i, j], self.cmap["other"])
-                if color == "black" :
+                if color != self.wall_color:
                     # value_color = "rgb({0}, {0}, {0})".format(int(255*self.values[i, j]))
-                    value_color = self.value2color(self.values[i, j], max_val, min_val)
+                    value_color = f"rgb{tuple(color_matrix[i, j, :])}"
                     if self.draw_agent_path and (i, j) in self.agent_path:
                         value_color = "yellow"
                     
+                    # canvas.draw_polygon(
+                    #     rect, self.grid_width, 
+                    #     self.grid_color, 
+                    #     value_color
+                    # )
+
+                    background_color = "rgba(0,0,0,0)" if color == f"rgb{tuple(self.background_color)}" else color
                     canvas.draw_polygon(
                         rect, self.grid_width, 
+                        self.grid_color, 
+                        background_color
+                    )
+
+                    canvas.draw_circle(
+                        self.ij2xy(i + 0.5, j + 0.5), 
+                        self.l*0.45,
+                        self.grid_width/2, 
                         self.grid_color, 
                         value_color
                     )
@@ -473,7 +502,7 @@ class ValueIterationGUI(MDPGUI):
                             font_size=20,
                             font_color="black"
                         )
-                if self.draw_policy and color != "grey":
+                if self.draw_policy and color != self.wall_color:
                     if self.policy[i][j] in self.arrow_polygons.keys():
                         polygon = self.arrow_polygons[self.policy[i][j]]
                         polygon = [self.ij2xy(i+di, j+dj) for di, dj in polygon]
@@ -496,10 +525,10 @@ class ValueIterationGUI(MDPGUI):
                     )
                 if self.draw_values:
                     canvas.draw_text(
-                            "{:.3f}".format(self.values[i, j]),
-                            self.ij2xy(i+0.5, j+0.5),
-                            font_size=20,
-                            font_color="white"
+                            "{:.2f}".format(self.values[i, j]),
+                            self.ij2xy(i+0.5, j+0.4),
+                            font_size=12,
+                            font_color=self.text_color
                         )
 
         if not (self.draw_policy or self.draw_agent_path):
@@ -514,7 +543,7 @@ class ValueIterationGUI(MDPGUI):
                 self.draw_status,
                 (20, 30),
                 font_size=20,
-                font_color="white"
+                font_color=self.text_color
             )
 
 
