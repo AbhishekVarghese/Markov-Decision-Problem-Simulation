@@ -444,8 +444,8 @@ class ValueIterationGUI(MDPGUI):
     def value2color_vectorized(self, val_matrix):
         val_matrix = val_matrix[:, :, None]
         max_val, min_val = self.values.max(), self.values.min()
-        colors = (val_matrix <= 0) * np.abs(val_matrix/(min_val+1e-10)) * self.cmap_negvval[None, None, :] \
-                + (val_matrix > 0) * np.abs(val_matrix/(max_val+1e-10)) * self.cmap_posvval[None, None, :]
+        colors = (val_matrix <= 0) * (self.background_color[None, None, :] + (self.cmap_negvval[None, None, :] - self.background_color[None, None, :]) * np.abs(val_matrix/(min_val+1e-10))) \
+                + (val_matrix > 0) * (self.background_color[None, None, :] + (self.cmap_posvval[None, None, :] - self.background_color[None, None, :]) * np.abs(val_matrix/(max_val+1e-10)))
         colors = np.uint8(colors)
         return colors
 
