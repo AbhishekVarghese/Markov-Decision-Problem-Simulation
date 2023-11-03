@@ -141,6 +141,7 @@ class ValueIterationGUI(MDPGUI):
             -10: self.wall_color,
             "other": "cyan"
         }
+        self.text_size = 12
         self.grid_width = 2
         self.draw_mode = 0
         self.canvas_width = self.frame._canvas._width
@@ -190,6 +191,7 @@ class ValueIterationGUI(MDPGUI):
         self.board = board.board
         self.player_pos = player_pos
         self.x_pad, self.y_pad, self.l = self.get_pad_l()
+        self.text_size = int(self.l*0.2)
 
         self.d_label = self.frame.add_input("Discount Factor (Gamma)", self.update_discount("set"), width=100)
         self.d_label.set_text(str(self.discount))
@@ -495,13 +497,6 @@ class ValueIterationGUI(MDPGUI):
                         self.grid_color, 
                         color
                     )
-                    if color == self.cmap["other"]:
-                        canvas.draw_text(
-                            str(int(self.board[i, j])),
-                            self.ij2xy(i+0.5, j+0.5),
-                            font_size=20,
-                            font_color="black"
-                        )
                 if self.draw_policy and color != self.wall_color:
                     if self.policy[i][j] in self.arrow_polygons.keys():
                         polygon = self.arrow_polygons[self.policy[i][j]]
@@ -525,9 +520,9 @@ class ValueIterationGUI(MDPGUI):
                     )
                 if self.draw_values:
                     canvas.draw_text(
-                            "{:.2f}".format(self.values[i, j]),
-                            self.ij2xy(i+0.5, j+0.4),
-                            font_size=12,
+                            "{:05.2f}".format(self.values[i, j]),
+                            self.ij2xy(i+0.55, j+0.27),
+                            font_size=self.text_size,
                             font_color=self.text_color
                         )
 

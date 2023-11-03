@@ -210,6 +210,7 @@ class Qlearning_with_GUI() :
         self.wall_color = "grey"
         self.agent_color = (255, 215, 0)
         self.grid_width = 2
+        self.text_size = 12
         self.draw_mode = 0
         self.cmap_negvval = np.array([199, 21, 133])
         self.cmap_posvval = np.array([0, 250, 154])
@@ -488,9 +489,9 @@ class Qlearning_with_GUI() :
 
                     if self.show_Vepsilon_text :
                         canvas.draw_text(
-                            "%.2f"% Vepsilonest[i,j],
-                            self.ij2xy(i+0.5, j+0.40),
-                            font_size=12,
+                            "{:05.2f}".format(Vepsilonest[i,j]),
+                            self.ij2xy(i+0.55, j+0.34),
+                            font_size=self.text_size,
                             font_color= self.text_color
                         )
                     if self.draw_policy and board_color != self.wall_color :
@@ -551,6 +552,7 @@ class Qlearning_with_GUI() :
         self.y_pad = y_pad
         self.cell_size = cell_size
         self.cell_pad = self.cell_pad_ratio*self.cell_size
+        self.text_size = int(self.cell_size*0.15)
 
     def ij2xy(self, index0, index1):
         x = self.x_pad + index1*self.cell_size 
