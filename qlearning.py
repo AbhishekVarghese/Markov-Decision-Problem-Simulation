@@ -383,6 +383,14 @@ class Qlearning_with_GUI() :
         self.timer_play.stop()
 
 
+    def get_inner_padded_rect(self, rect, pad ):
+        padded_rect = []
+        padded_rect.append( (rect[0][0] + pad, rect[0][1] + pad) )
+        padded_rect.append( (rect[1][0] - pad, rect[1][1] + pad) )
+        padded_rect.append( (rect[2][0] - pad, rect[2][1] - pad) )
+        padded_rect.append( (rect[3][0] + pad, rect[3][1] - pad) )
+        return padded_rect
+        
     def draw_board(self, canvas):
         draw_start_time = time.time() # To compute FPS
 
@@ -403,23 +411,26 @@ class Qlearning_with_GUI() :
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
-                
-                #Compute VVal rectangle
-                inner_rect = []
-                inner_rect.append( (rect[0][0] + self.cell_pad, rect[0][1] + self.cell_pad) )
-                inner_rect.append( (rect[1][0] - self.cell_pad, rect[1][1] + self.cell_pad) )
-                inner_rect.append( (rect[2][0] - self.cell_pad, rect[2][1] - self.cell_pad) )
-                inner_rect.append( (rect[3][0] + self.cell_pad, rect[3][1] - self.cell_pad) )
+                             
                 
                 #Compute Qval Polygons
                 if self.show_Qval :
-                    left_action_polygon = [rect[0], inner_rect[0], inner_rect[3],rect[3]]
-                    up_action_polygon = [rect[0], inner_rect[0], inner_rect[1],rect[1]]
-                    right_action_polygon = [rect[1], inner_rect[1], inner_rect[2],rect[2]]
-                    down_action_polygon = [rect[2], inner_rect[2], inner_rect[3],rect[3]]
+                    inner_rect = self.get_inner_padded_rect(rect, self.cell_pad)
+                    outer_rect = self.get_inner_padded_rect(rect, self.cell_pad/3)
+
+                    left_action_polygon = [outer_rect[0], inner_rect[0], inner_rect[3], outer_rect[3]]
+                    up_action_polygon = [outer_rect[0], inner_rect[0], inner_rect[1],outer_rect[1]]
+                    right_action_polygon = [outer_rect[1], inner_rect[1], inner_rect[2],outer_rect[2]]
+                    down_action_polygon = [outer_rect[2], inner_rect[2], inner_rect[3],outer_rect[3]]
 
 
                 board_color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
+                canvas.draw_polygon(
+                        rect, self.grid_width, 
+                        self.grid_color, 
+                        board_color
+                    )
+                
                 if not (i,j) in self.board.done_tiles :
                     curr_color = f"rgb{tuple(Vcolor[i,j,:])}"
 
@@ -468,7 +479,7 @@ class Qlearning_with_GUI() :
                     #Inner Circle with Vvalue of the State
                     canvas.draw_circle(
                         self.ij2xy(i + 0.5, j + 0.5), 
-                        self.cell_size*0.15,
+                        self.cell_size*0.23,
                         self.grid_width/2, 
                         self.grid_color, 
                         curr_color
@@ -492,11 +503,6 @@ class Qlearning_with_GUI() :
                             self.arrow_color
                             )
                 else :
-                    canvas.draw_polygon(
-                        rect, self.grid_width, 
-                        self.grid_color, 
-                        board_color
-                    )
                     rect_done = [
                         self.ij2xy(i + 0.3, j+0.3),
                         self.ij2xy(i + 0.7, j+0.3),
