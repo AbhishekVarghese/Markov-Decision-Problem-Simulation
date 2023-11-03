@@ -180,7 +180,7 @@ class ValueIterationGUI(MDPGUI):
     def take_over(self, board, player_pos, p=1):
         self.p = p
         self.rewards = board.board
-        
+        self.raw_done_tiles = board.done_tiles
         self.done_tiles = []
         m, n = self.rewards.shape
         for i in range(m):
@@ -255,7 +255,7 @@ class ValueIterationGUI(MDPGUI):
             self.frame._controls = []
             self.frame._draw_controlpanel()
             send_fn(
-                Board(self.board,self.done_tiles), self.player_pos, 
+                Board(self.board,self.raw_done_tiles), self.player_pos, 
             )
         return handler
 
