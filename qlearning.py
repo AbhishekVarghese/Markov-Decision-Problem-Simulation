@@ -434,20 +434,17 @@ class Qlearning_with_GUI() :
                 
                 if not (i,j) in self.board.done_tiles :
                     curr_color = f"rgb{tuple(Vcolor[i,j,:])}"
-
-                    #Inner Square with the reward of the state
-                    canvas.draw_polygon(
-                        inner_rect, 0, 
-                        self.grid_color, 
-                        board_color
-                    )
-
-                    
-
                     
                     #Outer trapezoids with respective QValues
                     if self.show_Qval :
                         # curr_action_colors = [ self.value2color(qval) for qval  in self.agent.estQ[i,j,:] ]
+
+                        #Inner Square with the reward of the state
+                        canvas.draw_polygon(
+                            inner_rect, 0, 
+                            self.grid_color, 
+                            board_color
+                        )
                             
                         canvas.draw_polygon(
                             left_action_polygon, self.grid_width/2,
