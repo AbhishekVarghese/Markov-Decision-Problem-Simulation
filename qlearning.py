@@ -521,7 +521,7 @@ class Qlearning_with_GUI() :
         )
 
         draw_end_time = time.time()
-        self.fps_label.set_text(f"FPS : { int(1 / (draw_end_time - draw_start_time)) }")
+        self.fps_label.set_text(f"FPS : { int(1 / (draw_end_time - draw_start_time)) if (draw_end_time - draw_start_time) else 0 }")
 
     def valuematrix2colormatrix(self, Valmatrix):
         #Color Computation. Logic : Background Vector + scaled vector of linear interpolation between positive and negative. The scale is a cosine scale.
