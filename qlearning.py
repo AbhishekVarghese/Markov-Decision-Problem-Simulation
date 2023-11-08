@@ -156,11 +156,7 @@ class Qlearning_with_GUI() :
         self.alpha = alpha
         self.epsilon = epsilon
         self.max_T_in_str = ""
-        self.just_done = False
-        self.show_Vepsilon_text = True
-        self.show_Qval = True
-        self.draw_policy = False
-        
+        self.just_done = False      
 
 
         #Prevent Concurrency issues i.e. Functions are called faster than they can finish using the timer
@@ -221,6 +217,11 @@ class Qlearning_with_GUI() :
         self.speed_mod_factor = 1
         self.speed_increment = 0.1
         self.cell_pad_ratio = 0.25
+        #Gui elements
+        self.show_all_text = True
+        self.show_Qval = True
+        self.show_Vval = True
+        self.draw_policy = False
 
         self.cmap = {
             0: f"rgb{tuple(self.background_color)}",
@@ -295,9 +296,10 @@ class Qlearning_with_GUI() :
         self.frame.add_label("\n"*10)
         self.frame.add_label("Hide/Show more details. May affect the FPS of the display.")
         self.fps_label = self.frame.add_label("FPS : 0")
-        self.show_text_button = self.frame.add_button(f"Show V_epsilon in text : {self.show_Vepsilon_text}", self.flip_show_text)
-        self.show_Qvalues_button = self.frame.add_button(f"Show Qvalues as ColorMap : {self.show_Qval}", self.flip_show_qval)
-        self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}", self.flip_show_policy)
+        self.show_all_text_button = self.frame.add_button(f"Hide text labels : {self.show_all_text}", self.flip_show_text)
+        self.show_Qvalues_button = self.frame.add_button(f"Hide Qvalues", self.flip_show_qval)
+        self.show_Vvalues_button = self.frame.add_button(f"Hide Vvalues", self.flip_show_vval)
+        self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S))", self.flip_show_policy)
 
     def flip_avoid_states(self) :
         self.avoid_visited_states = not self.avoid_visited_states
@@ -305,15 +307,31 @@ class Qlearning_with_GUI() :
     
     def flip_show_qval(self) :
         self.show_Qval = not self.show_Qval
-        self.show_Qvalues_button.set_text(f"Show Qvalues as ColorMap : {self.show_Qval}")
+        if self.show_Qval :
+            self.show_Qvalues_button.set_text(f"Hide Q-Values")
+        else :
+            self.show_Qvalues_button.set_text(f"Show Q-Values")
+    
+    def flip_show_vval(self) :
+        self.show_Vval = not self.show_Vval
+        if self.show_Vval :
+            self.show_Vvalues_button.set_text(f"Hide V-Values")
+        else :
+            self.show_Vvalues_button.set_text(f"Show V-Values")
 
     def flip_show_text(self) :
-        self.show_Vepsilon_text = not self.show_Vepsilon_text
-        self.show_text_button.set_text(f"Show V_epsilon in text : {self.show_Vepsilon_text}")
+        self.show_all_text = not self.show_all_text
+        if self.show_all_text :
+            self.show_all_text_button.set_text(f"Hide all text labels")
+        else:
+            self.show_all_text_button.set_text(f"Show all text labels")
 
     def flip_show_policy(self) :
         self.draw_policy = not self.draw_policy
-        self.show_policy_button.set_text(f"Show Optimal Policy argmax(Q(S)) : {self.draw_policy}")
+        if self.draw_policy :
+            self.show_policy_button.set_text(f"Hide Optimal Policy argmax(Q(S))")
+        else :
+            self.show_policy_button.set_text(f"Show Optimal Policy argmax(Q(S))")
 
     def update_T(self,T) :
         if T.isdigit() :
@@ -412,10 +430,9 @@ class Qlearning_with_GUI() :
                     self.ij2xy(i+1, j+1),
                     self.ij2xy(i+1, j),
                 ]
-                             
                 
                 #Compute Qval Polygons
-                if self.show_Qval :
+                if self.show_Qval and self.show_Vval :
                     inner_rect = self.get_inner_padded_rect(rect, self.cell_pad)
                     outer_rect = self.get_inner_padded_rect(rect, self.cell_pad/3)
 
@@ -423,8 +440,17 @@ class Qlearning_with_GUI() :
                     up_action_polygon = [outer_rect[0], inner_rect[0], inner_rect[1],outer_rect[1]]
                     right_action_polygon = [outer_rect[1], inner_rect[1], inner_rect[2],outer_rect[2]]
                     down_action_polygon = [outer_rect[2], inner_rect[2], inner_rect[3],outer_rect[3]]
+                
+                elif self.show_Qval and not self.show_Vval :
+                    outer_rect = self.get_inner_padded_rect(rect, self.cell_pad/3)
+                    center = [ rect[0][0] + (rect[2][0] - rect[0][0])/2 , rect[0][1] + (rect[2][1] - rect[0][1])/2 ] 
+                    left_action_polygon = [outer_rect[0], center, outer_rect[3]]
+                    up_action_polygon = [outer_rect[1], center, outer_rect[0]]
+                    right_action_polygon = [outer_rect[2],center, outer_rect[1]]
+                    down_action_polygon = [outer_rect[3], center, outer_rect[2]]
 
 
+                #Draw Original cell first
                 board_color = self.cmap.get(self.env.board[i, j], self.cmap["other"])
                 canvas.draw_polygon(
                         rect, self.grid_width, 
@@ -432,20 +458,11 @@ class Qlearning_with_GUI() :
                         board_color
                     )
                 
-                if not (i,j) in self.board.done_tiles :
+                if not (i,j) in self.board.done_tiles and not (i,j) in self.board.blocked_tiles:
                     curr_color = f"rgb{tuple(Vcolor[i,j,:])}"
                     
-                    #Outer trapezoids with respective QValues
-                    if self.show_Qval :
-                        # curr_action_colors = [ self.value2color(qval) for qval  in self.agent.estQ[i,j,:] ]
-
-                        #Inner Square with the reward of the state
-                        canvas.draw_polygon(
-                            inner_rect, 0, 
-                            self.grid_color, 
-                            board_color
-                        )
-                            
+                    #Outer trapezoids or triangles with respective QValues
+                    if self.show_Qval:
                         canvas.draw_polygon(
                             left_action_polygon, self.grid_width/2,
                             self.grid_color,
@@ -466,31 +483,53 @@ class Qlearning_with_GUI() :
                             self.grid_color,
                             f"rgb{tuple(Qcolor[ i,j,self.agent.action_to_index['down'] ])}"
                         )
+                        
+                        #If text is to be shown and if the Vvalue circle is not potentially covering it up
+                        if self.show_all_text and not self.show_Vval :
+                            canvas.draw_text(
+                                "{:05.2f}".format(Qest[i,j,self.agent.action_to_index['left']]),
+                                self.ij2xy(i+0.55, j+0.10),
+                                font_size= self.text_size,
+                                font_color= self.text_color
+                            )
+                            canvas.draw_text(
+                                "{:05.2f}".format(Qest[i,j,self.agent.action_to_index['right']]),
+                                self.ij2xy(i+0.55, j+0.55),
+                                font_size=self.text_size,
+                                font_color= self.text_color
+                            )
+                            canvas.draw_text(
+                                "{:05.2f}".format(Qest[i,j,self.agent.action_to_index['up']]),
+                                self.ij2xy(i+0.30, j+0.35),
+                                font_size=self.text_size,
+                                font_color= self.text_color
+                            )
+                            canvas.draw_text(
+                                "{:05.2f}".format(Qest[i,j,self.agent.action_to_index['down']]),
+                                self.ij2xy(i+0.80, j+0.35),
+                                font_size=self.text_size,
+                                font_color= self.text_color
+                            )
 
-                    #Borders of the cell
-                    canvas.draw_polygon(
-                        rect, self.grid_width, 
-                        self.grid_color, 
-                        "rgba(0,0,0,0)"
-                    )
 
-                    #Inner Circle with Vvalue of the State
-                    canvas.draw_circle(
-                        self.ij2xy(i + 0.5, j + 0.5), 
-                        self.cell_size*0.23,
-                        self.grid_width/2, 
-                        self.grid_color, 
-                        curr_color
-                    )
-
-
-                    if self.show_Vepsilon_text :
-                        canvas.draw_text(
-                            "{:05.2f}".format(Vepsilonest[i,j]),
-                            self.ij2xy(i+0.55, j+0.34),
-                            font_size=self.text_size,
-                            font_color= self.text_color
+                    if self.show_Vval :
+                        #Inner Circle with Vvalue of the State
+                        canvas.draw_circle(
+                            self.ij2xy(i + 0.5, j + 0.5), 
+                            self.cell_size*0.23,
+                            self.grid_width/2, 
+                            self.grid_color, 
+                            curr_color
                         )
+                        if self.show_all_text :
+                            canvas.draw_text(
+                                "{:05.2f}".format(Vepsilonest[i,j]),
+                                self.ij2xy(i+0.55, j+0.34),
+                                font_size=self.text_size,
+                                font_color= self.text_color
+                            )
+
+                    
                     if self.draw_policy and board_color != self.wall_color :
                         opt_action = self.agent.index_to_action[self.agent.opt_policy[i][j]]
                         polygon = self.arrow_polygons[opt_action]
@@ -500,7 +539,8 @@ class Qlearning_with_GUI() :
                             self.arrow_color, 
                             self.arrow_color
                             )
-                else :
+                elif (i,j) in self.board.done_tiles :
+                    #Do terminal states stuff
                     rect_done = [
                         self.ij2xy(i + 0.3, j+0.3),
                         self.ij2xy(i + 0.7, j+0.3),
@@ -521,11 +561,11 @@ class Qlearning_with_GUI() :
         )
 
         draw_end_time = time.time()
-        self.fps_label.set_text(f"FPS : { int(1 / (draw_end_time - draw_start_time)) if (draw_end_time - draw_start_time) else 0 }")
+        self.fps_label.set_text(f"FPS : { int(1 / (draw_end_time - draw_start_time)) if (draw_end_time - draw_start_time) else 'Your machine`s a beast' }")
 
     def valuematrix2colormatrix(self, Valmatrix):
         #Color Computation. Logic : Background Vector + scaled vector of linear interpolation between positive and negative. The scale is a cosine scale.
-        #Resultant : Parametric curve going from approx positive to approx background to approx negative
+        #Resultant : Parametric curve going from approx positive to approx background to approx negative. Also immune to absolute Values greater than 1
 
         cmap = np.tanh(np.pi*Valmatrix/2)/2 + 0.5 
         cmap = np.expand_dims(cmap, -1)
