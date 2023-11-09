@@ -2,6 +2,8 @@
 
 This is a simulation of the standard textbook MDP environment (Robot in a maze) made using SimpleGUI and python.
 
+**Note : We are looking to improve this tool. If you have some time, please send us some feedback here https://forms.gle/UGBbgecAjjWcR26P7**
+
 ## Installation
 
 To install all the requirements run
