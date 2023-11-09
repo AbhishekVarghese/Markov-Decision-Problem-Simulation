@@ -10,7 +10,7 @@ To install all the requirements run
 pip install -r requirements.txt
 ```
 
-## Environment - Robot in a 2D maze
+## Environment - Robot in a 2D Grid
 
 **States** - Squares on the grid with coordinates (x,y)
 
@@ -24,7 +24,7 @@ pip install -r requirements.txt
 
 You can change the grid and draw reward states (+1, -1, wall) and mark which states are "done states" by drawing on the canvas.
 
-After choosing input, you can run either Value Iteration or Q-Learning.
+After choosing input, you can run either Value Iteration or Q-Learning. (More RL algorithms will be added in the future.)
 
 ## Run Simulation
 
@@ -50,14 +50,14 @@ There are several buttons on the left, and their functionalities are:
 
 * Draw +1 Reward: mark a cell as a +1 Reward cell by clicking on the cell. +1 Reward cell will be marked as a green cell.
 * Draw -1 Reward: mark a cell as a -1 Reward cell by clicking on the cell. -1 Reward cell will be marked as a red cell.
-* Draw wall: mark a cell as a wall by clicking on the cell. The robot will not be able to enter a wall cell. A wall cell will be marked as a grey cell.
+* Draw wall: mark a cell as a wall by clicking on the cell. The robot will not be able to enter a wall cell i.e. for cells adjacent to the wall, there are no actions going into a wall. A wall cell will be marked as a grey cell.
 * Mark Terminal States: mark a cell as a terminal state by clicking on the cell. The robot will stop moving and the episode is ended when the robot enters a terminal state. The terminal state will be marked by a small square.
 * Erase: reset the cell to a blank one.
 * Set Start Position: click a cell to change the start position which is marked by a yellow dot.
 
 #### Board selection
 
-We have made a pre-defined
+Once you make your board you can save it. We also have a few selection of pre-defined boards/grids which you can experiment on.
 
 * Next: select the next board.
 * Prev: select the previous board.
