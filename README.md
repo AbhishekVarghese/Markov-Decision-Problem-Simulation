@@ -88,5 +88,5 @@ Once you make your board you can save it. We also have a few selection of pre-de
 * Discount Factor (Gamma): the discount factor used in Q learning. It should be a value between [0,1].
 * Exploration Rate (Epsilon): the exploaration rate used in Q learning. It should be a value between [0,1].
 * Learning Rate (Alpha): the learning rate used in Q learning.
-* Max time steps: set the maximum time step that Q learning should run.
-* Animation Speed multiplier: control the speed of the animation. Change it to a larger value if you find the animation too slow.
+* Max time steps: After the agent takes T steps, it agent will reset back to start state. Must be an integer. If left blank T is inifinity.
+* Animation Speed multiplier: Controls in how many seconds should agent move. The input should be A value greater than 0. By default agent takes 1 step every second. Setting the value to 2 increases the speed to 2x i.e. one step every 0.5 seconds. Change it to a larger value if you find the animation too slow. Change to lower value if you want to observe/study the numerical values generated. Note that changing the animation speed multiplier won't affect the FPS. Hence you may not be able to observe all frames if the FPS < Animation Speed multiplier.
