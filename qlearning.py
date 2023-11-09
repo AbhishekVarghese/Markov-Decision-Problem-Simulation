@@ -296,7 +296,7 @@ class Qlearning_with_GUI() :
         self.frame.add_label("\n"*10)
         self.frame.add_label("Hide/Show more details. May affect the FPS of the display.")
         self.fps_label = self.frame.add_label("FPS : 0")
-        self.show_all_text_button = self.frame.add_button(f"Hide text labels : {self.show_all_text}", self.flip_show_text)
+        self.show_all_text_button = self.frame.add_button(f"Hide text labels", self.flip_show_text)
         self.show_Qvalues_button = self.frame.add_button(f"Hide Qvalues", self.flip_show_qval)
         self.show_Vvalues_button = self.frame.add_button(f"Hide Vvalues", self.flip_show_vval)
         self.show_policy_button = self.frame.add_button(f"Show Optimal Policy argmax(Q(S))", self.flip_show_policy)
