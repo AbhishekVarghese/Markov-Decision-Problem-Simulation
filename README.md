@@ -85,20 +85,21 @@ Once you make your board you can save it. We also have a few selection of pre-de
 
 ### Q Learning Page
 
-![1699553882529](image/README/1699553882529.png)
-
-![1699553945660](image/README/1699553945660.png)
-
-![1699554015585](image/README/1699554015585.png)
-
 #### Board Pane
 
 The original grid is overlayed with shapes to show Vvalues for the current Policy and QValues.
+
+![1699553882529](image/README/1699553882529.png)
+
 Vvalues are represented by the circle in the center. They are computed by the following equation -
 
 ![\Large x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}](https://latex.codecogs.com/svg.latex?\Large&space;V\(s\)=\sum_{a}\pi_\epsilon\(a\)Q\(s,a\))
 
+![1699553945660](image/README/1699553945660.png)
+
 The Qvalues are computed using the Qlearning algorithm. When Vvalues are turned off, Qvalues are represented by triangles with base facing the corresponding action. When Vvalues are turned on, parts of the triangle are overlayed by the circle, hence we chose to not display the Qvalue text in that case.
+
+![1699554015585](image/README/1699554015585.png)
 
 #### Interface Pane
 
