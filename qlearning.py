@@ -638,6 +638,7 @@ class Qlearning_with_GUI() :
         self.curr_T += 1
         if self.max_T_in_str != "" and self.curr_T == int(self.max_T_in_str) :
             done = True
+            self.curr_T = 0
 
         if done :
             self.just_done = True

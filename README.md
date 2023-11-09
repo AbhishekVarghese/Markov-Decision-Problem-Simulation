@@ -85,8 +85,33 @@ Once you make your board you can save it. We also have a few selection of pre-de
 
 ![1699381474012](image/README/1699381474012.png)
 
-* Discount Factor (Gamma): the discount factor used in Q learning. It should be a value between [0,1].
-* Exploration Rate (Epsilon): the exploaration rate used in Q learning. It should be a value between [0,1].
-* Learning Rate (Alpha): the learning rate used in Q learning.
-* Max time steps: After the agent takes T steps, it agent will reset back to start state. Must be an integer. If left blank T is inifinity.
-* Animation Speed multiplier: Controls in how many seconds should agent move. The input should be A value greater than 0. By default agent takes 1 step every second. Setting the value to 2 increases the speed to 2x i.e. one step every 0.5 seconds. Change it to a larger value if you find the animation too slow. Change to lower value if you want to observe/study the numerical values generated. Note that changing the animation speed multiplier won't affect the FPS. Hence you may not be able to observe all frames if the FPS < Animation Speed multiplier.
+#### Board Pane
+The original grid is overlayed with shapes to show Vvalues for the current Policy and QValues. 
+Vvalues are represented by the circle in the center. They are computed by the following equation - 
+
+![\Large x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}](https://latex.codecogs.com/svg.latex?\Large&space;V\(s\)=\sum_{a}\pi_\epsilon\(a\)Q\(s,a\))
+
+
+The Qvalues are computed using the Qlearning algorithm. When Vvalues are turned off, Qvalues are represented by triangles with base facing the corresponding action. When Vvalues are turned on, parts of the triangle are overlayed by the circle, hence we chose to not display the Qvalue text in that case.
+
+#### Interface Pane
+* **Discount Factor (Gamma):** the discount factor used in Q learning. It should be a value between [0,1].
+* **Exploration Rate (Epsilon):** the exploaration rate used in Q learning. It should be a value between [0,1].
+* **Learning Rate (Alpha):** the learning rate used in Q learning.
+* **Max time steps:** After the agent takes T steps, it agent will reset back to start state and start a new Episode. No rewards are given during this procedure in order to maintain the Markovness of the 2D grid state space. Must be an integer. If left blank, T is inifinity.
+* **Animation Speed multiplier:** Controls in how many seconds should agent move. The input should be A value greater than 0. By default agent takes 1 step every second. Setting the value to 2 increases the speed to 2x i.e. one step every 0.5 seconds. Change it to a larger value if you find the animation too slow. Change to lower value if you want to observe/study the numerical values generated. Note that changing the animation speed multiplier won't affect the FPS. Hence you may not be able to observe all frames if the FPS < Animation Speed multiplier.
+
+
+
+## Examine and Evaluate
+- What would happen if the reward states were not terminal in Value iteration?
+- How many episodes does the vanilla QLearning need for the Qvalues of the initial state to be meaningfully updated?
+- What do you observe about the propogation of negative rewards in each of these algorithms? 
+
+  - For QLearning how is the propogation of the negative signal from negative rewards (during QValue update) affected by Epsilon (the exploration rate)?
+
+- For larger boards, what affect does gamma have to QValues and Vvalues, when the distance of the start state to the reward state is increased or decreased?
+
+- For a large board with a single terminal state, why does Qlearning perform better when intermidiate rewards/ penalty is given as compared to when no intermidiate rewards are given? 
+
+  - What's the risk of giving positive vs negative intermidiate rewards?
