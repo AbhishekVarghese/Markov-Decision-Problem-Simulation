@@ -9,7 +9,7 @@ This is a simulation of the standard textbook MDP environment (Robot in a maze) 
 To install all the requirements run
 
 ```bash
-pip install -r requirements.txt
+pip install SimpleGUICS2Pygame
 ```
 
 ## Environment - Robot in a 2D Grid
