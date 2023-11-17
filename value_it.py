@@ -478,17 +478,8 @@ class ValueIterationGUI(MDPGUI):
                     canvas.draw_polygon(
                         rect, self.grid_width, 
                         self.grid_color, 
-                        background_color
-                    )
-
-                    canvas.draw_circle(
-                        self.ij2xy(i + 0.5, j + 0.5), 
-                        self.l*0.45,
-                        self.grid_width/2, 
-                        self.grid_color, 
                         value_color
                     )
-                    
 
 
                 else :
