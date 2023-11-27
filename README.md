@@ -12,6 +12,8 @@ To install all the requirements run
 pip install SimpleGUICS2Pygame
 ```
 
+_Note : This library requires any text based input in a text box to be followed by a return to register as an input._
+
 ## Environment - Robot in a 2D Grid
 
 **States** - Squares on the grid with coordinates (x,y)
@@ -33,6 +35,22 @@ After choosing input, you can run either Value Iteration or Q-Learning. (More RL
 ```bash
 python main.py
 ```
+
+## Examine and Evaluate
+
+### Value Iteration
+- How many loop iterations does it take for the V-Value of the initial state to be updated at least once?
+- You will observe that all reward states are considered terminal in Value Iteration. What would happen if the reward states were not terminal in Value iteration?
+- What do you observe about the propogation of signals from **negative** rewards in Value Iteration?
+
+
+### Q-Learning
+- How many episodes does the vanilla QLearning need for the Qvalues of the initial state to be updated at least once?
+- What do you observe about the propogation on signals from negative rewards in Q-Learning?
+  - How is this propogation affected by Epsilon(the exploration rate) ?
+- For larger boards, what affect does gamma have to QValues and Vvalues, when the distance of the start state to the reward state is increased or decreased?
+- For a large board with a single terminal state, why does Qlearning finds path to terminal state faster when intermidiate rewards/ penalty is given as compared to when no intermidiate rewards are given?
+  - What's the risk of giving positive vs negative intermidiate rewards? Which one gets the desired outcome quicker - positive intermidiate or negative intermidiate?
 
 ## Documentation
 
@@ -109,14 +127,3 @@ The Qvalues are computed using the Qlearning algorithm. When Vvalues are turned 
 * **Max time steps:** After the agent takes T steps, it agent will reset back to start state and start a new Episode. No rewards are given during this procedure in order to maintain the Markovness of the 2D grid state space. Must be an integer. If left blank, T is inifinity.
 * **Animation Speed multiplier:** Controls in how many seconds should agent move. The input should be A value greater than 0. By default agent takes 1 step every second. Setting the value to 2 increases the speed to 2x i.e. one step every 0.5 seconds. Change it to a larger value if you find the animation too slow. Change to lower value if you want to observe/study the numerical values generated. Note that changing the animation speed multiplier won't affect the FPS. Hence you may not be able to observe all frames if the FPS < Animation Speed multiplier.
 
-## Examine and Evaluate
-
-- What would happen if the reward states were not terminal in Value iteration?
-- How many episodes does the vanilla QLearning need for the Qvalues of the initial state to be meaningfully updated?
-- What do you observe about the propogation of negative rewards in each of these algorithms?
-
-  - For QLearning how is the propogation of the negative signal from negative rewards (during QValue update) affected by Epsilon (the exploration rate)?
-- For larger boards, what affect does gamma have to QValues and Vvalues, when the distance of the start state to the reward state is increased or decreased?
-- For a large board with a single terminal state, why does Qlearning perform better when intermidiate rewards/ penalty is given as compared to when no intermidiate rewards are given?
-
-  - What's the risk of giving positive vs negative intermidiate rewards?
