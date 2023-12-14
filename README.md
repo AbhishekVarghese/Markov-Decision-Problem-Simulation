@@ -12,7 +12,7 @@ To install all the requirements run
 pip install SimpleGUICS2Pygame
 ```
 
-_Note : This library requires any text based input in a text box to be followed by a return to register as an input._
+_Note : This library requires that **any text based input in a text box to be followed by pressing the return key to register it as an input**._
 
 ## Environment - Robot in a 2D Grid
 
