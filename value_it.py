@@ -481,6 +481,14 @@ class ValueIterationGUI(MDPGUI):
                         value_color
                     )
 
+                    if self.draw_values:
+                        canvas.draw_text(
+                                "{:05.2f}".format(self.values[i, j]),
+                                self.ij2xy(i+0.55, j+0.27),
+                                font_size=self.text_size,
+                                font_color=self.text_color
+                            )
+
 
                 else :
                     canvas.draw_polygon(
@@ -509,13 +517,6 @@ class ValueIterationGUI(MDPGUI):
                         "white", 
                         "rgba(0, 0, 0, 0)"
                     )
-                if self.draw_values:
-                    canvas.draw_text(
-                            "{:05.2f}".format(self.values[i, j]),
-                            self.ij2xy(i+0.55, j+0.27),
-                            font_size=self.text_size,
-                            font_color=self.text_color
-                        )
 
         if not (self.draw_policy or self.draw_agent_path):
             i, j  = self.player_pos
@@ -524,6 +525,13 @@ class ValueIterationGUI(MDPGUI):
                 self.l//4, 2, 
                 "yellow", "yellow"
             )
+            if self.draw_values:
+                canvas.draw_text(
+                    "{:05.2f}".format(self.values[i, j]),
+                    self.ij2xy(i+0.55, j+0.27),
+                    font_size=self.text_size,
+                    font_color=self.text_color
+                )
         if self.draw_status is not None:
             self.frame._canvas.draw_text(
                 self.draw_status,
